@@ -89,19 +89,6 @@ export class MapRenderer {
     const tileX = Math.floor(mapX / this.tileManager.tileSize);
     const tileY = Math.floor(mapY / this.tileManager.tileSize);
 
-    // Debug output
-    console.log({
-      browser: { x, y },
-      canvas: { x: canvasX, y: canvasY },
-      map: { x: mapX, y: mapY },
-      tile: { x: tileX, y: tileY },
-      transform: {
-        zoom: this.currentZoom,
-        offsetX: this.currentOffsetX,
-        offsetY: this.currentOffsetY
-      }
-    });
-
     const success = this.tileManager.setTileAtPosition(
       tileX,
       tileY,
@@ -165,7 +152,6 @@ export class MapRenderer {
 
   private renderTileLayer(layer: TileLayerItem) {
     if (!layer.tileData) {
-      console.log('Creating empty layer:', layer.width, layer.height);
       layer.tileData = this.tileManager.createEmptyTileLayer(
         layer.width, 
         layer.height

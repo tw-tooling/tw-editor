@@ -1,6 +1,9 @@
 # Teeworlds map editor
 
-## Features
+A web based map editor for Teeworlds.
+
+
+## Planned Features
 
 * web based
 * brush functions
