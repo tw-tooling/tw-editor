@@ -148,6 +148,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isInserting, setIsInserting] = useState(false);
   const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
   const [selectedTiles, setSelectedTiles] = useState<{id: number, flags: number}[]>([]);
   const [previewPosition, setPreviewPosition] = useState<{x: number, y: number} | null>(null);
@@ -367,6 +368,37 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     };
   }, []);
 
+  // Helper function to insert tiles at position
+  const insertTilesAtPosition = useCallback((tileCoords: {x: number, y: number}) => {
+    if (!selection || selectedTiles.length === 0) return;
+    
+    const activeLayer = layers[selectedLayer];
+    if (!activeLayer?.parsed || !('tileData' in activeLayer.parsed)) return;
+
+    const updatedLayer = { ...activeLayer };
+    const layer = updatedLayer.parsed as TileLayerItem;
+    
+    // Calculate dimensions of the selection
+    const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
+    
+    // Paste the selected tiles
+    selectedTiles.forEach((tile, i) => {
+      const x = tileCoords.x + (i % selectionWidth);
+      const y = tileCoords.y + Math.floor(i / selectionWidth);
+      
+      if (x >= 0 && x < layer.width && y >= 0 && y < layer.height && layer.tileData) {
+        const index = y * layer.width + x;
+        layer.tileData[index] = {
+          ...layer.tileData[index],
+          id: tile.id,
+          flags: tile.flags
+        };
+      }
+    });
+    
+    updateLayer(selectedLayer, updatedLayer);
+  }, [layers, selectedLayer, selection, selectedTiles, updateLayer]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       // Middle mouse or Alt+Left click for panning
@@ -377,39 +409,17 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         const tileCoords = screenToTileCoords(e.clientX, e.clientY);
         if (tileCoords) {
           setIsSelecting(true);
+          setPreviewPosition(null); // Hide preview when starting new selection
           setSelection({
             start: tileCoords,
             end: tileCoords
           });
         }
       } else if (e.button === 2 && selectedTiles.length > 0) { // Right click for insertion
+        setIsInserting(true);
         const tileCoords = screenToTileCoords(e.clientX, e.clientY);
-        if (tileCoords && selection) {
-          const activeLayer = layers[selectedLayer];
-          if (activeLayer?.parsed && 'tileData' in activeLayer.parsed) {
-            const updatedLayer = { ...activeLayer };
-            const layer = updatedLayer.parsed as TileLayerItem;
-            
-            // Calculate dimensions of the selection
-            const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
-            
-            // Paste the selected tiles
-            selectedTiles.forEach((tile, i) => {
-              const x = tileCoords.x + (i % selectionWidth);
-              const y = tileCoords.y + Math.floor(i / selectionWidth);
-              
-              if (x >= 0 && x < layer.width && y >= 0 && y < layer.height && layer.tileData) {
-                const index = y * layer.width + x;
-                layer.tileData[index] = {
-                  ...layer.tileData[index],
-                  id: tile.id,
-                  flags: tile.flags
-                };
-              }
-            });
-            
-            updateLayer(selectedLayer, updatedLayer);
-          }
+        if (tileCoords) {
+          insertTilesAtPosition(tileCoords);
         }
       }
     } else if (e.button === 0 && (tool === 'brush' || tool === 'eraser')) {
@@ -454,6 +464,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             start: prev.start,
             end: tileCoords
           } : null);
+        } else if (isInserting) {
+          insertTilesAtPosition(tileCoords);
+          setPreviewPosition(tileCoords);
         } else if (selectedTiles.length > 0) {
           setPreviewPosition(tileCoords);
         }
@@ -481,6 +494,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const handleMouseUp = (e: React.MouseEvent) => {
     setIsDragging(false);
     setIsDrawing(false);
+    setIsInserting(false);
     
     if (tool === 'select' && isSelecting) {
       setIsSelecting(false);
@@ -513,6 +527,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
   const handleMouseLeave = () => {
     setPreviewPosition(null);
+    setIsInserting(false);
   };
 
   return (
