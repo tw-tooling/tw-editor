@@ -585,7 +585,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsTouchInput(true);
     if (e.touches.length === 2) {
-      // Initialize two-finger gesture for pan/zoom
+      e.preventDefault();
       const distance = getTouchDistance(e.touches);
       const center = getTouchCenter(e.touches);
       
@@ -646,15 +646,15 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
     if (e.touches.length === 2) {
-      // Handle two-finger pan/zoom
+      e.preventDefault();
       const distance = getTouchDistance(e.touches);
       const center = getTouchCenter(e.touches);
       
       if (distance !== null && center !== null && touchStartDistance && touchStartZoom && touchStartCenter) {
         const scale = distance / touchStartDistance;
-        const newZoom = Math.min(Math.max(touchStartZoom * scale, 0.1), 10);
+        const zoomFactor = Math.pow(scale, 0.5);
+        const newZoom = Math.min(Math.max(touchStartZoom * zoomFactor, 0.1), 10);
         
         const newOffset = {
           x: center.x - (touchStartCenter.x - offset.x) * (newZoom / touchStartZoom),
@@ -773,20 +773,24 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleExport]);
 
-  // Prevent browser zoom and scroll
+  // Remove the global touch event prevention
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const preventDefault = (e: TouchEvent) => {
       if (e.touches.length > 1) {
         e.preventDefault();
       }
     };
 
-    document.addEventListener('touchmove', preventDefault, { passive: false });
-    document.addEventListener('touchstart', preventDefault, { passive: false });
+    // Only prevent on canvas
+    canvas.addEventListener('touchmove', preventDefault, { passive: false });
+    canvas.addEventListener('touchstart', preventDefault, { passive: false });
 
     return () => {
-      document.removeEventListener('touchmove', preventDefault);
-      document.removeEventListener('touchstart', preventDefault);
+      canvas.removeEventListener('touchmove', preventDefault);
+      canvas.removeEventListener('touchstart', preventDefault);
     };
   }, []);
 
