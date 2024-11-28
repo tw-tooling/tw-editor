@@ -137,6 +137,8 @@ const createDefaultMap = (): MapData => {
   };
 };
 
+type MobileView = 'draw' | 'layers' | 'properties';
+
 const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData }) => {
   const [mapData, setMapData] = useState(() => initialMapData || createDefaultMap());
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -153,6 +155,11 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
   const [selectedTiles, setSelectedTiles] = useState<{id: number, flags: number}[]>([]);
   const [previewPosition, setPreviewPosition] = useState<{x: number, y: number} | null>(null);
+  const [leftPanelVisible, setLeftPanelVisible] = useState(true);
+  const [rightPanelVisible, setRightPanelVisible] = useState(true);
+  const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
+  const [touchStartZoom, setTouchStartZoom] = useState<number | null>(null);
+  const [mobileView, setMobileView] = useState<MobileView>('draw');
 
   const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
 
@@ -534,6 +541,98 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     setIsErasing(false);
   };
 
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return null;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches);
+      if (distance !== null) {
+        setTouchStartDistance(distance);
+        setTouchStartZoom(zoom);
+      }
+    } else if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - offset.x,
+        y: e.touches[0].clientY - offset.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent scrolling while interacting with canvas
+
+    if (e.touches.length === 2 && touchStartDistance && touchStartZoom) {
+      const distance = getTouchDistance(e.touches);
+      if (distance !== null) {
+        const scale = distance / touchStartDistance;
+        const newZoom = Math.min(Math.max(touchStartZoom * scale, 0.1), 10);
+        
+        // Get center point of the two touches
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        
+        // Convert center point from screen space to world space
+        const worldX = (centerX - offset.x) / zoom;
+        const worldY = (centerY - offset.y) / zoom;
+        
+        // Calculate new offset to keep the world point under the center point
+        const newOffset = {
+          x: centerX - worldX * newZoom,
+          y: centerY - worldY * newZoom
+        };
+
+        setZoom(newZoom);
+        setOffset(newOffset);
+      }
+    } else if (e.touches.length === 1 && isDragging) {
+      const newOffset = {
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y
+      };
+      setOffset(newOffset);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setTouchStartDistance(null);
+    setTouchStartZoom(null);
+  };
+
+  const renderMobileNavigation = () => {
+    return (
+      <div className={styles.bottomNav}>
+        <button
+          className={`${styles.bottomNavButton} ${mobileView === 'layers' ? styles.active : ''}`}
+          onClick={() => setMobileView(mobileView === 'layers' ? 'draw' : 'layers')}
+        >
+          <i className="fas fa-layers" />
+          <span>Layers</span>
+        </button>
+        <button
+          className={`${styles.bottomNavButton} ${mobileView === 'draw' ? styles.active : ''}`}
+          onClick={() => setMobileView('draw')}
+        >
+          <i className="fas fa-paint-brush" />
+          <span>Draw</span>
+        </button>
+        <button
+          className={`${styles.bottomNavButton} ${mobileView === 'properties' ? styles.active : ''}`}
+          onClick={() => setMobileView(mobileView === 'properties' ? 'draw' : 'properties')}
+        >
+          <i className="fas fa-cog" />
+          <span>Properties</span>
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.editor}>
       <EditorToolbar 
@@ -545,7 +644,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       />
       
       <div className={styles.workspace}>
-        <div className={styles.leftPanel}>
+        <div className={`${styles.leftPanel} ${mobileView === 'layers' ? styles.visible : ''}`}>
           <LayerPanel />
         </div>
         
@@ -558,16 +657,21 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             onContextMenu={(e) => e.preventDefault()}
           />
         </div>
         
-        <div className={styles.rightPanel}>
+        <div className={`${styles.rightPanel} ${mobileView === 'properties' ? styles.visible : ''}`}>
           <PropertiesPanel
             selectedLayer={selectedLayer}
             mapData={mapData}
           />
         </div>
+
+        {renderMobileNavigation()}
       </div>
     </div>
   );

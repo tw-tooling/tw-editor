@@ -82,4 +82,35 @@
   flex: 1;
   margin: 0 0.25rem;
   text-align: center;
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+  .panel {
+    padding: 8px;
+  }
+
+  .propertyGroup {
+    margin-bottom: 8px;
+    padding: 8px;
+  }
+
+  .input {
+    height: 40px;
+    font-size: 16px;  /* Prevent iOS zoom on focus */
+  }
+
+  .colorInputs {
+    gap: 8px;
+  }
+
+  .colorInput {
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .size span {
+    padding: 8px;
+    font-size: 14px;
+  }
 } 
