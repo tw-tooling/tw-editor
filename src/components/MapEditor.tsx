@@ -237,65 +237,62 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
     rendererRef.current.render(zoom, offset.x, offset.y);
 
-    // Only show preview for mouse input
-    if (!isTouchInput) {
-      const tileSize = 32 * zoom;
+    const tileSize = 32 * zoom;
 
-      // Draw active selection if selecting
-      if (selection && (isSelecting || selectedTiles.length === 0)) {
-        const startX = offset.x + selection.start.x * tileSize;
-        const startY = offset.y + selection.start.y * tileSize;
-        const width = (selection.end.x - selection.start.x + 1) * tileSize;
-        const height = (selection.end.y - selection.start.y + 1) * tileSize;
+    // Draw active selection if selecting
+    if (selection && (isSelecting || selectedTiles.length === 0)) {
+      const startX = offset.x + selection.start.x * tileSize;
+      const startY = offset.y + selection.start.y * tileSize;
+      const width = (selection.end.x - selection.start.x + 1) * tileSize;
+      const height = (selection.end.y - selection.start.y + 1) * tileSize;
+      
+      ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, startY, width, height);
+      ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
+      ctx.fillRect(startX, startY, width, height);
+    }
+
+    // Draw preview of selected tiles
+    if (!isTouchInput && previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
+      const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
+      const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
+      const previewX = offset.x + previewPosition.x * tileSize;
+      const previewY = offset.y + previewPosition.y * tileSize;
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        previewX, 
+        previewY, 
+        selectionWidth * tileSize, 
+        selectionHeight * tileSize
+      );
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.fillRect(
+        previewX, 
+        previewY, 
+        selectionWidth * tileSize, 
+        selectionHeight * tileSize
+      );
+
+      // Draw preview tiles with semi-transparency
+      selectedTiles.forEach((tile, i) => {
+        const x = previewPosition.x + (i % selectionWidth);
+        const y = previewPosition.y + Math.floor(i / selectionWidth);
         
-        ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, width, height);
-        ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
-        ctx.fillRect(startX, startY, width, height);
-      }
-
-      // Draw preview of selected tiles
-      if (previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
-        const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
-        const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
-        const previewX = offset.x + previewPosition.x * tileSize;
-        const previewY = offset.y + previewPosition.y * tileSize;
-        
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-          previewX, 
-          previewY, 
-          selectionWidth * tileSize, 
-          selectionHeight * tileSize
-        );
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.fillRect(
-          previewX, 
-          previewY, 
-          selectionWidth * tileSize, 
-          selectionHeight * tileSize
-        );
-
-        // Draw preview tiles with semi-transparency
-        selectedTiles.forEach((tile, i) => {
-          const x = previewPosition.x + (i % selectionWidth);
-          const y = previewPosition.y + Math.floor(i / selectionWidth);
-          
-          if (rendererRef.current?.tileManager && tile.id !== 0) {
-            ctx.globalAlpha = 0.5;
-            rendererRef.current.tileManager.renderTile(
-              ctx,
-              tile,
-              offset.x + x * tileSize,
-              offset.y + y * tileSize,
-              tileSize
-            );
-            ctx.globalAlpha = 1.0;
-          }
-        });
-      }
+        if (rendererRef.current?.tileManager && tile.id !== 0) {
+          ctx.globalAlpha = 0.5;
+          rendererRef.current.tileManager.renderTile(
+            ctx,
+            tile,
+            offset.x + x * tileSize,
+            offset.y + y * tileSize,
+            tileSize
+          );
+          ctx.globalAlpha = 1.0;
+        }
+      });
     }
   }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition, isTouchInput]);
 
