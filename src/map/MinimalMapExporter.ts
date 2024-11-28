@@ -11,7 +11,32 @@ export class MinimalMapExporter {
   private static ITEMTYPE_SIZE = 12;
   private static ITEM_SIZE = 8;
 
+  // Tile IDs from Teeworlds
+  private static TILE = {
+    AIR: 0,
+    SOLID: 1,
+    DEATH: 2,
+    NOHOOK: 3,
+    // Game layer special tiles
+    SPAWN: 192,
+    SPAWN_RED: 193,
+    SPAWN_BLUE: 194,
+    FLAGSTAND_RED: 195,
+    FLAGSTAND_BLUE: 196,
+  };
+
   public static exportMinimalMap(): ArrayBuffer {
+    const mapWidth = 100;
+    const mapHeight = 50;
+
+    // Define image names and create their byte arrays
+    const imageNames = ["grass_main", "generic_unhookable", "desert_main"];
+    const imageData = imageNames.map(name => {
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(name + '\0');
+      return bytes;
+    });
+
     // Create minimal items array with data as integer arrays
     const items: MinimalItem[] = [
       // Version item
@@ -22,28 +47,64 @@ export class MinimalMapExporter {
       // Info item
       {
         typeAndId: (ItemType.INFO << 16) | 0,
-        data: [1, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff]  // version 1 + empty strings
+        data: [1, -1, -1, -1, -1, -1]  // version 1 + empty strings
       },
-      // Image item (grass_main)
-      {
-        typeAndId: (ItemType.IMAGE << 16) | 0,
-        data: [1, 1024, 1024, 1, 0, 0xffffffff]  // version, width, height, external, image_id, name
-      },
-      // Group item
+      // Image items
+      ...imageNames.map((_, i) => ({
+        typeAndId: (ItemType.IMAGE << 16) | i,
+        data: [1, 1024, 1024, 1, i, -1]  // version, width, height, external, image_id, name
+      })),
+      // Main group
       {
         typeAndId: (ItemType.GROUP << 16) | 0,
-        data: [3, 0, 0, 100, 100, 0, 1, 0, 0, 0, 0, 0, 0x80808080, 0x80808080, 0x80808000]  // version, offsets, parallax, layers, clipping, name
+        data: [3, 0, 0, 100, 100, 0, 4, 0, 0, 0, 0, 0, -1, -1, -1]  // 4 layers
       },
       // Game layer
       {
         typeAndId: (ItemType.LAYER << 16) | 0,
         data: [
           0, LayerType.TILES, 0,  // header
-          3, 50, 50, 1,  // version, width, height, flags
+          3, mapWidth, mapHeight, 1,  // version, width, height, flags
           255, 255, 255, 255,  // color
-          0xffffffff, 0, 0xffffffff, 0,  // color env, image, data
-          0x80808080, 0x80808080, 0x80808000,  // name
-          0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff  // reserved
+          -1, 0, -1, imageData.length,  // color env, image (-1), data
+          -1, -1, -1,  // name
+          -1, -1, -1, -1, -1  // reserved
+        ]
+      },
+      // Front layer (using grass tileset)
+      {
+        typeAndId: (ItemType.LAYER << 16) | 1,
+        data: [
+          0, LayerType.TILES, 0,  // header
+          3, mapWidth, mapHeight, 0,  // version, width, height, flags
+          255, 255, 255, 255,  // color
+          -1, 0, 0, imageData.length + 1,  // color env, image (grass), data
+          -1, -1, -1,  // name
+          -1, -1, -1, -1, -1  // reserved
+        ]
+      },
+      // Unhookable layer
+      {
+        typeAndId: (ItemType.LAYER << 16) | 2,
+        data: [
+          0, LayerType.TILES, 0,  // header
+          3, mapWidth, mapHeight, 0,  // version, width, height, flags
+          255, 255, 255, 255,  // color
+          -1, 1, 1, imageData.length + 2,  // color env, image (unhookable), data
+          -1, -1, -1,  // name
+          -1, -1, -1, -1, -1  // reserved
+        ]
+      },
+      // Background layer (using desert tileset)
+      {
+        typeAndId: (ItemType.LAYER << 16) | 3,
+        data: [
+          0, LayerType.TILES, 0,  // header
+          3, mapWidth, mapHeight, 0,  // version, width, height, flags
+          255, 255, 255, 255,  // color
+          -1, 2, 2, imageData.length + 3,  // color env, image (desert), data
+          -1, -1, -1,  // name
+          -1, -1, -1, -1, -1  // reserved
         ]
       },
       // Envpoint item (empty end marker)
@@ -53,26 +114,93 @@ export class MinimalMapExporter {
       }
     ];
 
-    // Create tile data (50x50 grid with tile ID 1)
-    const tileData = new Uint8Array(50 * 50 * 4);
-    for (let i = 0; i < 50 * 50; i++) {
-      tileData[i * 4] = 1;      // id
-      tileData[i * 4 + 1] = 0;  // flags
-      tileData[i * 4 + 2] = 0;  // skip
-      tileData[i * 4 + 3] = 0;  // reserved
+    // Create game layer data (with walls and spawns)
+    const gameLayerData = new Uint8Array(mapWidth * mapHeight * 4);
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const i = (y * mapWidth + x) * 4;
+        
+        // Create ground
+        if (y >= mapHeight - 5) {
+          gameLayerData[i] = this.TILE.SOLID;
+        }
+        // Create side walls
+        else if (x < 3 || x >= mapWidth - 3) {
+          gameLayerData[i] = this.TILE.SOLID;
+        }
+        // Create platforms
+        else if (y === mapHeight - 15 && (x < mapWidth/3 || x > mapWidth*2/3)) {
+          gameLayerData[i] = this.TILE.SOLID;
+        }
+        // Create spawn points
+        else if (y === mapHeight - 6) {
+          if (x === 10) gameLayerData[i] = this.TILE.SPAWN_RED;
+          if (x === mapWidth - 10) gameLayerData[i] = this.TILE.SPAWN_BLUE;
+        }
+        // Create flag stands
+        else if (y === mapHeight - 6) {
+          if (x === 20) gameLayerData[i] = this.TILE.FLAGSTAND_RED;
+          if (x === mapWidth - 20) gameLayerData[i] = this.TILE.FLAGSTAND_BLUE;
+        }
+      }
     }
 
-    // Compress tile data
-    const compressedData = [pako.deflate(tileData)];
+    // Create front layer data (decoration)
+    const frontLayerData = new Uint8Array(mapWidth * mapHeight * 4);
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const i = (y * mapWidth + x) * 4;
+        // Add some decorative tiles
+        if (y === mapHeight - 15 && (x < mapWidth/3 || x > mapWidth*2/3)) {
+          frontLayerData[i] = 1;
+        }
+      }
+    }
+
+    // Create unhookable layer data
+    const unhookableLayerData = new Uint8Array(mapWidth * mapHeight * 4);
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const i = (y * mapWidth + x) * 4;
+        // Add some unhookable areas
+        if (y < mapHeight - 15 && y > mapHeight - 25 && x > mapWidth/2 - 5 && x < mapWidth/2 + 5) {
+          unhookableLayerData[i] = 1;
+        }
+      }
+    }
+
+    // Create background layer data
+    const backgroundLayerData = new Uint8Array(mapWidth * mapHeight * 4);
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        const i = (y * mapWidth + x) * 4;
+        // Add some background tiles
+        if ((x + y) % 4 === 0) {
+          backgroundLayerData[i] = 1;
+        }
+      }
+    }
+
+    // Create data array in same order as Python example
+    const data = [
+      ...imageData,  // Image names first
+      gameLayerData,  // Then game layer
+      frontLayerData,  // Then tile layers
+      unhookableLayerData,
+      backgroundLayerData
+    ];
+
+    // Compress all data
+    const compressedData = data.map(d => pako.deflate(d));
 
     // Calculate item types
     const itemTypes = [
       { typeId: ItemType.VERSION, start: 0, num: 1 },
       { typeId: ItemType.INFO, start: 1, num: 1 },
-      { typeId: ItemType.IMAGE, start: 2, num: 1 },
-      { typeId: ItemType.GROUP, start: 3, num: 1 },
-      { typeId: ItemType.LAYER, start: 4, num: 1 },
-      { typeId: ItemType.ENVPOINT, start: 5, num: 1 }
+      { typeId: ItemType.IMAGE, start: 2, num: 3 },
+      { typeId: ItemType.GROUP, start: 5, num: 1 },
+      { typeId: ItemType.LAYER, start: 6, num: 4 },
+      { typeId: ItemType.ENVPOINT, start: 10, num: 1 }
     ];
 
     // Calculate item offsets and sizes
@@ -84,9 +212,15 @@ export class MinimalMapExporter {
     });
 
     // Calculate data offsets
-    const dataOffsets: number[] = [0];
+    const dataOffsets: number[] = [];
+    let dataOffset = 0;
+    compressedData.forEach(data => {
+      dataOffsets.push(dataOffset);
+      dataOffset += data.length;
+    });
+
     const itemAreaSize = currentOffset;
-    const dataAreaSize = compressedData[0].length;
+    const dataAreaSize = dataOffset;
 
     // Calculate total size
     const itemTypesSize = itemTypes.length * this.ITEMTYPE_SIZE;
@@ -135,8 +269,10 @@ export class MinimalMapExporter {
     });
 
     // Write data sizes (uncompressed)
-    view.setInt32(offset, tileData.length, true);
-    offset += 4;
+    data.forEach(d => {
+      view.setInt32(offset, d.length, true);
+      offset += 4;
+    });
 
     // Write items
     items.forEach(item => {
@@ -154,7 +290,10 @@ export class MinimalMapExporter {
     });
 
     // Write compressed data
-    new Uint8Array(buffer, offset, compressedData[0].length).set(compressedData[0]);
+    compressedData.forEach(data => {
+      new Uint8Array(buffer, offset, data.length).set(data);
+      offset += data.length;
+    });
 
     return buffer;
   }
