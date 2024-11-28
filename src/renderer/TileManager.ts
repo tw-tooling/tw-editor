@@ -44,6 +44,7 @@ export class TileManager {
 
     return {
       type: 2, // LayerType.TILES
+      name: '',
       flags: 0,
       version: 1,
       width,

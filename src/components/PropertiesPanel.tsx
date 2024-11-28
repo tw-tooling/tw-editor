@@ -24,7 +24,7 @@ const LAYER_TYPE_OPTIONS = [
 
 export const PropertiesPanel: React.FC<PropertiesProps> = ({
   selectedLayer,
-  mapData
+  mapData: _mapData
 }) => {
   const { updateLayer, layers } = useLayers();
   const [layerName, setLayerName] = useState('');

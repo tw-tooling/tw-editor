@@ -1,4 +1,4 @@
-import { MapHeader, ItemTypeInfo, MapItem, MapData, VersionItem, InfoItem, ImageItem, GroupItem, LayerItem, LayerType } from '../types/map';
+import { MapHeader, ItemTypeInfo, MapItem, MapData, VersionItem, InfoItem, ImageItem, GroupItem, LayerItem, LayerType, ItemType } from '../types/map';
 
 export class MapReader {
   private buffer: ArrayBuffer;

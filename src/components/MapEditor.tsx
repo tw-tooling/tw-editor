@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { MapData, TileLayerItem, LayerType, MapItem } from '../types/map';
+import { MapData, TileLayerItem, LayerType } from '../types/map';
 import { EditorToolbar } from './EditorToolbar';
 import { LayerPanel } from './LayerPanel';
 import { PropertiesPanel } from './PropertiesPanel';
