@@ -72,28 +72,29 @@ export const LayerProvider: React.FC<{
   };
 
   const createEmptyTileLayer = (type: LayerType): MapItem => {
+    const isGameLayer = layers.length === 0;
     const layer: TileLayerItem = {
-      type,
-      flags: 0,
+      type: LayerType.TILES,  // Always TILES type
+      flags: isGameLayer ? 1 : 0,  // 1 for game layer, 0 for others
       version: 1,
-      width: 50,
-      height: 50,
-      color: { r: 255, g: 255, b: 255, a: 255 },
+      width: 100,  // Fixed width 100
+      height: 50,  // Fixed height 50
+      color: { r: 255, g: 255, b: 255, a: 255 },  // Always white
       colorEnv: -1,
       colorEnvOffset: 0,
-      image: -1,
+      image: isGameLayer ? -1 : layers.length - 1,  // -1 for game layer, index for others
       data: 0,
-      tileData: new Array(50 * 50).fill(null).map(() => ({
+      tileData: new Array(100 * 50).fill(null).map(() => ({
         id: 0,
         flags: 0,
         skip: 0,
         reserved: 0
       })),
-      name: `Tile Layer ${findFirstAvailableLayerNumber()}`
+      name: isGameLayer ? 'Game Layer' : `Tile Layer ${findFirstAvailableLayerNumber()}`
     };
 
     return {
-      typeAndId: (type << 16) | layers.length,
+      typeAndId: (LayerType.TILES << 16) | layers.length,
       size: 0,
       data: new ArrayBuffer(0),
       parsed: layer

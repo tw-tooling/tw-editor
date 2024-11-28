@@ -19,22 +19,22 @@ const createDefaultMap = (): MapData => {
     data: new ArrayBuffer(0),
     parsed: {
       type: LayerType.TILES,
-      flags: 0,
+      flags: 1,
       version: 1,
-      width: 50,
+      width: 100,
       height: 50,
       color: { r: 255, g: 255, b: 255, a: 255 },
       colorEnv: -1,
       colorEnvOffset: 0,
       image: -1,
       data: 0,
-      tileData: new Array(50 * 50).fill(null).map(() => ({
+      tileData: new Array(100 * 50).fill(null).map(() => ({
         id: 0,
         flags: 0,
         skip: 0,
         reserved: 0
       })),
-      name: 'Tile Layer 0'
+      name: 'Game Layer'
     } as TileLayerItem
   };
 
