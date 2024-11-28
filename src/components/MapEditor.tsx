@@ -200,17 +200,69 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   }, [render]);
 
   const handleWheel = (e: React.WheelEvent) => {
+    // Always prevent browser zoom when ctrl is pressed
     if (e.ctrlKey) {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(z => Math.min(Math.max(z * delta, 0.1), 10));
+      
+      // Get canvas center in screen space
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const canvasCenterX = rect.width / 2;
+      const canvasCenterY = rect.height / 2;
+
+      // Calculate how the center point will move after zoom
+      const oldZoom = zoom;
+      const newZoom = Math.min(Math.max(oldZoom * delta, 0.1), 10);
+      
+      // Convert center point from screen space to world space
+      const worldX = (canvasCenterX - offset.x) / oldZoom;
+      const worldY = (canvasCenterY - offset.y) / oldZoom;
+      
+      // Calculate new offset to keep the world point under the screen point
+      const newOffset = {
+        x: canvasCenterX - worldX * newZoom,
+        y: canvasCenterY - worldY * newZoom
+      };
+
+      setZoom(newZoom);
+      setOffset(newOffset);
+    } else if (e.shiftKey) {
+      // Horizontal scroll when shift is pressed
+      e.preventDefault();
+      setOffset(prev => ({
+        x: prev.x - e.deltaY,  // Use deltaY for horizontal scroll
+        y: prev.y
+      }));
     } else {
+      // Normal vertical scroll
       setOffset(prev => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY
       }));
     }
   };
+
+  useEffect(() => {
+    // Prevent browser zoom on the canvas
+    const preventZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('wheel', preventZoom, { passive: false });
+    }
+
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('wheel', preventZoom);
+      }
+    };
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
