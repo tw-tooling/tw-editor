@@ -62,7 +62,8 @@ export class TileManager {
     ctx: CanvasRenderingContext2D, 
     tile: Tile, 
     x: number, 
-    y: number
+    y: number,
+    givenTileSize: number = this.tileSize
   ) {
     if (!this.tilesetImage || tile.id === 0) return;
 
@@ -74,7 +75,7 @@ export class TileManager {
       tileX, tileY,
       this.tileSize, this.tileSize,
       x, y,
-      this.tileSize, this.tileSize
+      givenTileSize, givenTileSize
     );
   }
 
