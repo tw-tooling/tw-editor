@@ -1,0 +1,90 @@
+.panel {
+  width: 250px;
+  background: #252525;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333;
+}
+
+.toolbox {
+  display: flex;
+  gap: 4px;
+}
+
+.addButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #333;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.addButton:hover {
+  background: #444;
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.layerList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.layer {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.layer:hover {
+  background: #333;
+}
+
+.layer.selected {
+  background: #454545;
+}
+
+.layerVisibility {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+}
+
+.layerContent {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layer.dragging {
+  opacity: 0.5;
+}
+
+.layer.dragOver {
+  border-top: 2px solid #666;
+} 

@@ -1,0 +1,48 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 250px 1fr 250px;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  background: #2c2c2c;
+  cursor: crosshair;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+/* Add these styles to handle canvas container */
+.canvasContainer {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+/* Add these styles to ensure panels stay on top */
+.leftPanel {
+  z-index: 10;
+  border-right: 1px solid #333;
+  background: #252525;
+}
+
+.rightPanel {
+  z-index: 10;
+  border-left: 1px solid #333;
+  background: #252525;
+} 

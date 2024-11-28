@@ -1,0 +1,56 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+}
+
+.toolGroup {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+  border-right: 1px solid #333;
+}
+
+.tool {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tool:hover {
+  background: #333;
+}
+
+.tool.active {
+  background: #454545;
+  color: #fff;
+}
+
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 16px;
+  color: #ccc;
+}
+
+.zoomControls button {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #333;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.zoomControls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+} 
