@@ -2,47 +2,60 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  position: relative;
+  background: #1e1e1e;
+  color: #fff;
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: 250px 1fr 250px;
   flex: 1;
+  display: flex;
   overflow: hidden;
-  position: relative;
 }
 
-.canvas {
-  width: 100%;
-  height: 100%;
-  background: #2c2c2c;
-  cursor: crosshair;
-}
-
-.canvas:active {
-  cursor: grabbing;
-}
-
-/* Add these styles to handle canvas container */
-.canvasContainer {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-}
-
-/* Add these styles to ensure panels stay on top */
 .leftPanel {
-  z-index: 10;
-  border-right: 1px solid #333;
+  width: 250px;
   background: #252525;
+  border-right: 1px solid #333;
 }
 
 .rightPanel {
-  z-index: 10;
-  border-left: 1px solid #333;
+  width: 250px;
   background: #252525;
-} 
+  border-left: 1px solid #333;
+}
+
+.canvasContainer {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas.brush {
+  cursor: crosshair;
+}
+
+.canvas.drawing {
+  cursor: crosshair;
+}
+
+.canvas.erasing {
+  cursor: not-allowed;
+}
+
+.canvas.inserting {
+  cursor: crosshair;
+}
+
+.canvas.selecting {
+  cursor: copy;
+}
+
+.canvas.dragging {
+  cursor: move;
+}

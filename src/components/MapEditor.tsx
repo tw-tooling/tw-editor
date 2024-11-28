@@ -142,11 +142,12 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [tool, setTool] = useState<'select' | 'brush' | 'eraser'>('brush');
+  const [tool, setTool] = useState<'select' | 'brush'>('brush');
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isErasing, setIsErasing] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isInserting, setIsInserting] = useState(false);
   const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
@@ -422,8 +423,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           insertTilesAtPosition(tileCoords);
         }
       }
-    } else if (e.button === 0 && (tool === 'brush' || tool === 'eraser')) {
+    } else if (tool === 'brush' && (e.button === 0 || e.button === 2)) {
       setIsDrawing(true);
+      setIsErasing(e.button === 2);
       const activeLayer = layers[selectedLayer];
       
       if (!activeLayer) {
@@ -442,7 +444,6 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             updatedLayer.parsed = updatedTileLayer;
             updateLayer(selectedLayer, updatedLayer);
           },
-          tool === 'eraser' ? 0 : undefined
         );
         render();
       }
@@ -471,7 +472,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           setPreviewPosition(tileCoords);
         }
       }
-    } else if (isDrawing) {
+    } else if (isDrawing && tool === 'brush') {
       const activeLayer = layers[selectedLayer];
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
         const updatedLayer = { ...activeLayer };
@@ -484,7 +485,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             updatedLayer.parsed = updatedTileLayer;
             updateLayer(selectedLayer, updatedLayer);
           },
-          tool === 'eraser' ? 0 : undefined
+          isErasing ? 0 : undefined // Use tile ID 0 for erasing
         );
         render();
       }
@@ -494,6 +495,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const handleMouseUp = (e: React.MouseEvent) => {
     setIsDragging(false);
     setIsDrawing(false);
+    setIsErasing(false);
     setIsInserting(false);
     
     if (tool === 'select' && isSelecting) {
@@ -528,6 +530,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const handleMouseLeave = () => {
     setPreviewPosition(null);
     setIsInserting(false);
+    setIsDrawing(false);
+    setIsErasing(false);
   };
 
   return (
@@ -548,12 +552,13 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         <div className={styles.canvasContainer}>
           <canvas
             ref={canvasRef}
-            className={styles.canvas}
+            className={`${styles.canvas} ${styles[tool]} ${isErasing ? styles.erasing : ''} ${isDrawing ? styles.drawing : ''} ${isSelecting ? styles.selecting : ''} ${isInserting ? styles.inserting : ''} ${isDragging ? styles.dragging : ''}`}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
+            onContextMenu={(e) => e.preventDefault()}
           />
         </div>
         

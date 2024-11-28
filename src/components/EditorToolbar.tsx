@@ -2,8 +2,8 @@ import React from 'react';
 import styles from './EditorToolbar.module.css';
 
 interface EditorToolbarProps {
-  tool: 'select' | 'brush' | 'eraser';
-  onToolChange: (tool: 'select' | 'brush' | 'eraser') => void;
+  tool: 'select' | 'brush';
+  onToolChange: (tool: 'select' | 'brush') => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onExport: () => void;
@@ -29,16 +29,9 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <button
           className={`${styles.tool} ${tool === 'brush' ? styles.active : ''}`}
           onClick={() => onToolChange('brush')}
-          title="Brush Tool"
+          title="Brush Tool (Right click to erase)"
         >
           <i className="fas fa-paint-brush" />
-        </button>
-        <button
-          className={`${styles.tool} ${tool === 'eraser' ? styles.active : ''}`}
-          onClick={() => onToolChange('eraser')}
-          title="Eraser Tool"
-        >
-          <i className="fas fa-eraser" />
         </button>
       </div>
 
