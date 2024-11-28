@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './EditorToolbar.module.css';
 
 interface EditorToolbarProps {
   tool: 'select' | 'brush';
+  mode: 'primary' | 'secondary';
   onToolChange: (tool: 'select' | 'brush', mode: 'primary' | 'secondary') => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
@@ -13,6 +14,7 @@ type ToolMode = 'primary' | 'secondary';
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   tool,
+  mode,
   onToolChange,
   zoom,
   onZoomChange,
@@ -20,6 +22,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 }) => {
   const [selectMode, setSelectMode] = useState<ToolMode>('primary');
   const [brushMode, setBrushMode] = useState<ToolMode>('primary');
+
+  // Update local mode states when parent mode changes
+  useEffect(() => {
+    if (tool === 'select') {
+      setSelectMode(mode);
+    } else {
+      setBrushMode(mode);
+    }
+  }, [tool, mode]);
 
   const handleToolClick = (toolType: 'select' | 'brush', event: React.MouseEvent | React.TouchEvent) => {
     // For mouse clicks, just change the tool with primary mode

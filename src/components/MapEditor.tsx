@@ -422,6 +422,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   }, [layers, selectedLayer, selection, selectedTiles, updateLayer]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Reset to primary mode on any mouse click
+    setToolState(prev => ({ ...prev, mode: 'primary' }));
+
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       // Middle mouse or Alt+Left click for panning
       setIsDragging(true);
@@ -431,7 +434,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         const tileCoords = screenToTileCoords(e.clientX, e.clientY);
         if (tileCoords) {
           setIsSelecting(true);
-          setPreviewPosition(null); // Hide preview when starting new selection
+          setPreviewPosition(null);
           setSelection({
             start: tileCoords,
             end: tileCoords
@@ -751,6 +754,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     <div className={styles.editor}>
       <EditorToolbar 
         tool={toolState.tool}
+        mode={toolState.mode}
         onToolChange={handleToolChange}
         zoom={zoom}
         onZoomChange={setZoom}
@@ -765,7 +769,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         <div className={styles.canvasContainer}>
           <canvas
             ref={canvasRef}
-            className={`${styles.canvas} ${styles[toolState.tool]} ${isErasing ? styles.erasing : ''} ${isDrawing ? styles.drawing : ''} ${isSelecting ? styles.selecting : ''} ${isInserting ? styles.inserting : ''} ${isDragging ? styles.dragging : ''}`}
+            className={`${styles.canvas} ${styles[toolState.tool]} ${styles[toolState.mode]} ${isErasing ? styles.erasing : ''} ${isDrawing ? styles.drawing : ''} ${isSelecting ? styles.selecting : ''} ${isInserting ? styles.inserting : ''} ${isDragging ? styles.dragging : ''}`}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
