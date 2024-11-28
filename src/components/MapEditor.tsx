@@ -238,7 +238,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     rendererRef.current.render(zoom, offset.x, offset.y);
 
     // Only show preview for mouse input
-    if (!isTouchInput && previewPosition && selectedTiles.length > 0) {
+    if (!isTouchInput) {
       const tileSize = 32 * zoom;
 
       // Draw active selection if selecting
