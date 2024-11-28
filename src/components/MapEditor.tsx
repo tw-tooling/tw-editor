@@ -227,6 +227,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
         const updatedLayer = { ...activeLayer };
+        rendererRef.current?.render(zoom, offset.x, offset.y);
         rendererRef.current?.handleMouseDown(
           e.clientX, 
           e.clientY, 
@@ -237,20 +238,23 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           },
           tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
         );
+        render();
       }
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging) {
-      setOffset({
+      const newOffset = {
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y
-      });
+      };
+      setOffset(newOffset);
     } else if (isDrawing) {
       const activeLayer = layers[selectedLayer];
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
         const updatedLayer = { ...activeLayer };
+        rendererRef.current?.render(zoom, offset.x, offset.y);
         rendererRef.current?.handleMouseDown(
           e.clientX, 
           e.clientY, 
@@ -261,6 +265,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           },
           tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
         );
+        render();
       }
     }
   };

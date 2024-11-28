@@ -6,6 +6,9 @@ export class MapRenderer {
   private mapData: MapData;
   private tileManager: TileManager;
   private selectedTileId: number = 1;
+  private currentZoom: number = 1;
+  private currentOffsetX: number = 0;
+  private currentOffsetY: number = 0;
 
   constructor(ctx: CanvasRenderingContext2D, mapData: MapData) {
     this.ctx = ctx;
@@ -23,13 +26,20 @@ export class MapRenderer {
   }
 
   public render(zoom: number, offsetX: number = 0, offsetY: number = 0) {
+    // Store current transform state
+    this.currentZoom = zoom;
+    this.currentOffsetX = offsetX;
+    this.currentOffsetY = offsetY;
+
     this.ctx.save();
     
     // Clear the entire canvas first
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     
-    // Apply transformations
+    // Apply transformations in the correct order:
+    // 1. Scale (zoom)
+    // 2. Translate (pan)
     this.ctx.setTransform(
       zoom, 0,
       0, zoom,
@@ -40,7 +50,7 @@ export class MapRenderer {
     // Render grid
     this.renderGrid();
 
-    // Debug: Draw a reference rectangle
+    // Debug: Draw a reference rectangle at map origin
     this.ctx.strokeStyle = 'red';
     this.ctx.strokeRect(0, 0, 100, 100);
 
@@ -55,8 +65,8 @@ export class MapRenderer {
   }
 
   public handleMouseDown(
-    x: number, 
-    y: number, 
+    x: number,  // clientX from mouse event
+    y: number,  // clientY from mouse event
     selectedLayer: TileLayerItem,
     onLayerUpdate?: (updatedLayer: TileLayerItem) => void,
     forceTileId?: number
@@ -66,28 +76,41 @@ export class MapRenderer {
       return;
     }
 
-    // Get the canvas rect to handle offset
+    // Step 1: Browser coordinates to Canvas coordinates
     const rect = this.ctx.canvas.getBoundingClientRect();
-    
-    // Convert screen coordinates to canvas coordinates
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
 
-    // Convert to world coordinates
-    const transform = this.ctx.getTransform();
-    const worldX = (canvasX - transform.e) / transform.a;
-    const worldY = (canvasY - transform.f) / transform.d;
+    // Step 2: Canvas coordinates to Map coordinates using stored transform
+    const mapX = (canvasX - this.currentOffsetX) / this.currentZoom;
+    const mapY = (canvasY - this.currentOffsetY) / this.currentZoom;
+
+    // Step 3: Map coordinates to Tile coordinates
+    const tileX = Math.floor(mapX / this.tileManager.tileSize);
+    const tileY = Math.floor(mapY / this.tileManager.tileSize);
+
+    // Debug output
+    console.log({
+      browser: { x, y },
+      canvas: { x: canvasX, y: canvasY },
+      map: { x: mapX, y: mapY },
+      tile: { x: tileX, y: tileY },
+      transform: {
+        zoom: this.currentZoom,
+        offsetX: this.currentOffsetX,
+        offsetY: this.currentOffsetY
+      }
+    });
 
     const success = this.tileManager.setTileAtPosition(
-      worldX,
-      worldY,
+      tileX,
+      tileY,
       selectedLayer,
       forceTileId !== undefined ? forceTileId : this.selectedTileId
     );
 
     if (success && onLayerUpdate) {
       onLayerUpdate({ ...selectedLayer });
-      this.render(transform.a, transform.e, transform.f);
     }
   }
 

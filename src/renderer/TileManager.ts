@@ -89,14 +89,11 @@ export class TileManager {
   }
 
   public setTileAtPosition(
-    x: number, 
-    y: number, 
+    tileX: number, 
+    tileY: number, 
     layer: TileLayerItem, 
     tileId: number
   ): boolean {
-    const tileX = Math.floor(x / this.tileSize);
-    const tileY = Math.floor(y / this.tileSize);
-    
     if (tileX < 0 || tileX >= layer.width || tileY < 0 || tileY >= layer.height) {
       return false;
     }
