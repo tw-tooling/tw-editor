@@ -13,30 +13,105 @@ interface MapEditorProps {
 }
 
 const createDefaultMap = (): MapData => {
-  const defaultLayer: MapItem = {
-    typeAndId: (LayerType.TILES << 16) | 0,
-    size: 0,
-    data: new ArrayBuffer(0),
-    parsed: {
-      type: LayerType.TILES,
-      flags: 1,
-      version: 1,
-      width: 100,
-      height: 50,
-      color: { r: 255, g: 255, b: 255, a: 255 },
-      colorEnv: -1,
-      colorEnvOffset: 0,
-      image: -1,
-      data: 0,
-      tileData: new Array(100 * 50).fill(null).map(() => ({
-        id: 0,
+  // Create all layers from the example
+  const layers = [
+    // Game layer
+    {
+      size: 0,
+      data: new ArrayBuffer(0),
+      parsed: {
+        type: LayerType.TILES,
+        flags: 1,
+        version: 1,
+        width: 100,
+        height: 50,
+        color: { r: 255, g: 255, b: 255, a: 255 },
+        colorEnv: -1,
+        colorEnvOffset: 0,
+        image: -1,  // game layer
+        data: 0,
+        tileData: new Array(100 * 50).fill(null).map(() => ({
+          id: 0,
+          flags: 0,
+          skip: 0,
+          reserved: 0
+        })),
+        name: 'Game Layer'
+      } as TileLayerItem
+    },
+    // Front layer (grass)
+    {
+      size: 0,
+      data: new ArrayBuffer(0),
+      parsed: {
+        type: LayerType.TILES,
         flags: 0,
-        skip: 0,
-        reserved: 0
-      })),
-      name: 'Game Layer'
-    } as TileLayerItem
-  };
+        version: 1,
+        width: 100,
+        height: 50,
+        color: { r: 255, g: 255, b: 255, a: 255 },
+        colorEnv: -1,
+        colorEnvOffset: 0,
+        image: 0,  // grass_main
+        data: 0,
+        tileData: new Array(100 * 50).fill(null).map(() => ({
+          id: 0,
+          flags: 0,
+          skip: 0,
+          reserved: 0
+        })),
+        name: 'Front Layer'
+      } as TileLayerItem
+    },
+    // Unhookable layer
+    {
+      size: 0,
+      data: new ArrayBuffer(0),
+      parsed: {
+        type: LayerType.TILES,
+        flags: 0,
+        version: 1,
+        width: 100,
+        height: 50,
+        color: { r: 255, g: 255, b: 255, a: 255 },
+        colorEnv: -1,
+        colorEnvOffset: 0,
+        image: 1,  // generic_unhookable
+        data: 0,
+        tileData: new Array(100 * 50).fill(null).map(() => ({
+          id: 0,
+          flags: 0,
+          skip: 0,
+          reserved: 0
+        })),
+        name: 'Unhookable Layer'
+      } as TileLayerItem
+    },
+    // Background layer (desert)
+    {
+      size: 0,
+      data: new ArrayBuffer(0),
+      parsed: {
+        type: LayerType.TILES,
+        flags: 0,
+        version: 1,
+        width: 100,
+        height: 50,
+        color: { r: 255, g: 255, b: 255, a: 255 },
+        colorEnv: -1,
+        colorEnvOffset: 0,
+        image: 2,  // desert_main
+        data: 0,
+        tileData: new Array(100 * 50).fill(null).map(() => ({
+          id: 0,
+          flags: 0,
+          skip: 0,
+          reserved: 0
+        })),
+        name: 'Background Layer'
+      } as TileLayerItem
+    }
+  ];
 
   return {
     header: {
@@ -45,7 +120,7 @@ const createDefaultMap = (): MapData => {
       size: 0,
       swapLen: 0,
       numItemTypes: 1,
-      numItems: 1,
+      numItems: layers.length,
       numData: 0,
       itemSize: 0,
       dataSize: 0
@@ -53,11 +128,11 @@ const createDefaultMap = (): MapData => {
     itemTypes: [{
       typeId: LayerType.TILES,
       start: 0,
-      num: 1
+      num: layers.length
     }],
-    itemOffsets: [0],
+    itemOffsets: new Array(layers.length).fill(0),
     dataOffsets: [],
-    items: [defaultLayer],
+    items: layers,
     data: []
   };
 };

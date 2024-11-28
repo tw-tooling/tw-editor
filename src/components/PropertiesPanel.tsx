@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapData, TileLayerItem } from '../types/map';
+import { MapData, TileLayerItem, LayerType } from '../types/map';
 import { useLayers } from '../contexts/LayerContext';
 import styles from './PropertiesPanel.module.css';
 
@@ -14,6 +14,12 @@ const IMAGE_OPTIONS = [
   { id: 0, name: "grass_main" },
   { id: 1, name: "generic_unhookable" },
   { id: 2, name: "desert_main" }
+];
+
+// Layer type options
+const LAYER_TYPE_OPTIONS = [
+  { id: LayerType.TILES, name: "Tiles" },
+  { id: LayerType.GAME, name: "Game" }
 ];
 
 export const PropertiesPanel: React.FC<PropertiesProps> = ({
@@ -59,6 +65,19 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
     }
   };
 
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = parseInt(e.target.value);
+    
+    if (activeLayer && layerData) {
+      const updatedLayer = { ...activeLayer };
+      updatedLayer.parsed = {
+        ...layerData,
+        type: newType
+      };
+      updateLayer(selectedLayer, updatedLayer);
+    }
+  };
+
   if (!activeLayer || !layerData) {
     return (
       <div className={styles.panel}>
@@ -80,6 +99,21 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
           onChange={handleNameChange}
           className={styles.input}
         />
+      </div>
+
+      <div className={styles.propertyGroup}>
+        <label>Type:</label>
+        <select
+          value={layerData.type}
+          onChange={handleTypeChange}
+          className={styles.input}
+        >
+          {LAYER_TYPE_OPTIONS.map(option => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className={styles.propertyGroup}>

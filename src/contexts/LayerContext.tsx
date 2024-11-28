@@ -19,38 +19,112 @@ export const LayerProvider: React.FC<{
   initialLayers?: MapItem[];
 }> = ({ children, initialLayers = [] }) => {
   // Helper function to create initial layer
-  const createInitialLayer = (): MapItem => {
-    return {
-      typeAndId: (LayerType.TILES << 16) | 0,
-      size: 0,
-      data: new ArrayBuffer(0),
-      parsed: {
-        type: LayerType.TILES,
-        flags: 0,
-        version: 1,
-        width: 50,
-        height: 50,
-        color: { r: 255, g: 255, b: 255, a: 255 },
-        colorEnv: -1,
-        colorEnvOffset: 0,
-        image: -1,
-        data: 0,
-        tileData: new Array(50 * 50).fill(null).map(() => ({
-          id: 0,
+  const createInitialLayer = (): MapItem[] => {
+    return [
+      // Game layer
+      {
+        size: 0,
+        data: new ArrayBuffer(0),
+        parsed: {
+          type: LayerType.TILES,
+          flags: 1,
+          version: 1,
+          width: 100,
+          height: 50,
+          color: { r: 255, g: 255, b: 255, a: 255 },
+          colorEnv: -1,
+          colorEnvOffset: 0,
+          image: -1,  // game layer
+          data: 0,
+          tileData: new Array(100 * 50).fill(null).map(() => ({
+            id: 0,
+            flags: 0,
+            skip: 0,
+            reserved: 0
+          })),
+          name: 'Game Layer'
+        } as TileLayerItem
+      },
+      // Front layer (grass)
+      {
+        size: 0,
+        data: new ArrayBuffer(0),
+        parsed: {
+          type: LayerType.TILES,
           flags: 0,
-          skip: 0,
-          reserved: 0
-        })),
-        name: 'Tile Layer 0'
-      } as TileLayerItem
-    };
+          version: 1,
+          width: 100,
+          height: 50,
+          color: { r: 255, g: 255, b: 255, a: 255 },
+          colorEnv: -1,
+          colorEnvOffset: 0,
+          image: 0,  // grass_main
+          data: 0,
+          tileData: new Array(100 * 50).fill(null).map(() => ({
+            id: 0,
+            flags: 0,
+            skip: 0,
+            reserved: 0
+          })),
+          name: 'Front Layer'
+        } as TileLayerItem
+      },
+      // Unhookable layer
+      {
+        size: 0,
+        data: new ArrayBuffer(0),
+        parsed: {
+          type: LayerType.TILES,
+          flags: 0,
+          version: 1,
+          width: 100,
+          height: 50,
+          color: { r: 255, g: 255, b: 255, a: 255 },
+          colorEnv: -1,
+          colorEnvOffset: 0,
+          image: 1,  // generic_unhookable
+          data: 0,
+          tileData: new Array(100 * 50).fill(null).map(() => ({
+            id: 0,
+            flags: 0,
+            skip: 0,
+            reserved: 0
+          })),
+          name: 'Unhookable Layer'
+        } as TileLayerItem
+      },
+      // Background layer (desert)
+      {
+        size: 0,
+        data: new ArrayBuffer(0),
+        parsed: {
+          type: LayerType.TILES,
+          flags: 0,
+          version: 1,
+          width: 100,
+          height: 50,
+          color: { r: 255, g: 255, b: 255, a: 255 },
+          colorEnv: -1,
+          colorEnvOffset: 0,
+          image: 2,  // desert_main
+          data: 0,
+          tileData: new Array(100 * 50).fill(null).map(() => ({
+            id: 0,
+            flags: 0,
+            skip: 0,
+            reserved: 0
+          })),
+          name: 'Background Layer'
+        } as TileLayerItem
+      }
+    ];
   };
 
   const [layers, setLayers] = useState<MapItem[]>(() => {
     if (initialLayers.length > 0) {
       return initialLayers;
     }
-    return [createInitialLayer()];
+    return createInitialLayer();
   });
   const [selectedLayer, setSelectedLayer] = useState<number>(0);
 
