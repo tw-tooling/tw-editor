@@ -663,6 +663,14 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
         setZoom(newZoom);
         setOffset(newOffset);
+        setTouchStartDistance(distance);
+        setTouchStartZoom(zoom);
+        setTouchStartCenter(center);
+        setIsDragging(true);
+        setDragStart({
+          x: center.x - offset.x,
+          y: center.y - offset.y
+        });
       }
     } else if (e.touches.length === 1) {
       // Handle single finger based on tool and mode
