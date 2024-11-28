@@ -150,6 +150,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [isSelecting, setIsSelecting] = useState(false);
   const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
   const [selectedTiles, setSelectedTiles] = useState<{id: number, flags: number}[]>([]);
+  const [previewPosition, setPreviewPosition] = useState<{x: number, y: number} | null>(null);
 
   const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
 
@@ -211,24 +212,69 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     if (!rendererRef.current) return;
     rendererRef.current.render(zoom, offset.x, offset.y);
     
-    // Draw selection rectangle if exists
-    if (selection && canvasRef.current) {
+    if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
         const tileSize = 32 * zoom;
-        const startX = offset.x + selection.start.x * tileSize;
-        const startY = offset.y + selection.start.y * tileSize;
-        const width = (selection.end.x - selection.start.x + 1) * tileSize;
-        const height = (selection.end.y - selection.start.y + 1) * tileSize;
-        
-        ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, width, height);
-        ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
-        ctx.fillRect(startX, startY, width, height);
+
+        // Draw active selection if selecting
+        if (selection && (isSelecting || selectedTiles.length === 0)) {
+          const startX = offset.x + selection.start.x * tileSize;
+          const startY = offset.y + selection.start.y * tileSize;
+          const width = (selection.end.x - selection.start.x + 1) * tileSize;
+          const height = (selection.end.y - selection.start.y + 1) * tileSize;
+          
+          ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(startX, startY, width, height);
+          ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
+          ctx.fillRect(startX, startY, width, height);
+        }
+
+        // Draw preview of selected tiles
+        if (previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
+          const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
+          const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
+          const previewX = offset.x + previewPosition.x * tileSize;
+          const previewY = offset.y + previewPosition.y * tileSize;
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(
+            previewX, 
+            previewY, 
+            selectionWidth * tileSize, 
+            selectionHeight * tileSize
+          );
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.fillRect(
+            previewX, 
+            previewY, 
+            selectionWidth * tileSize, 
+            selectionHeight * tileSize
+          );
+
+          // Draw preview tiles with semi-transparency
+          selectedTiles.forEach((tile, i) => {
+            const x = previewPosition.x + (i % selectionWidth);
+            const y = previewPosition.y + Math.floor(i / selectionWidth);
+            
+            if (rendererRef.current?.tileManager && tile.id !== 0) {
+              ctx.globalAlpha = 0.5;
+              rendererRef.current.tileManager.renderTile(
+                ctx,
+                tile,
+                offset.x + x * tileSize,
+                offset.y + y * tileSize,
+                tileSize
+              );
+              ctx.globalAlpha = 1.0;
+            }
+          });
+        }
       }
     }
-  }, [zoom, offset, selection]);
+  }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -400,13 +446,17 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         y: e.clientY - dragStart.y
       };
       setOffset(newOffset);
-    } else if (tool === 'select' && isSelecting) {
+    } else if (tool === 'select') {
       const tileCoords = screenToTileCoords(e.clientX, e.clientY);
       if (tileCoords) {
-        setSelection(prev => prev ? {
-          start: prev.start,
-          end: tileCoords
-        } : null);
+        if (isSelecting) {
+          setSelection(prev => prev ? {
+            start: prev.start,
+            end: tileCoords
+          } : null);
+        } else if (selectedTiles.length > 0) {
+          setPreviewPosition(tileCoords);
+        }
       }
     } else if (isDrawing) {
       const activeLayer = layers[selectedLayer];
@@ -461,6 +511,10 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     };
   }, []);
 
+  const handleMouseLeave = () => {
+    setPreviewPosition(null);
+  };
+
   return (
     <div className={styles.editor}>
       <EditorToolbar 
@@ -484,7 +538,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
           />
         </div>
         
