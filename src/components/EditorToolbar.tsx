@@ -6,13 +6,15 @@ interface EditorToolbarProps {
   onToolChange: (tool: 'select' | 'brush' | 'fill' | 'eraser') => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  onExport: () => void;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   tool,
   onToolChange,
   zoom,
-  onZoomChange
+  onZoomChange,
+  onExport
 }) => {
   return (
     <div className={styles.toolbar}>
@@ -62,6 +64,16 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           title="Zoom In"
         >
           <i className="fas fa-search-plus" />
+        </button>
+      </div>
+
+      <div className={styles.toolGroup}>
+        <button
+          className={styles.tool}
+          onClick={onExport}
+          title="Export Map"
+        >
+          <i className="fas fa-download" />
         </button>
       </div>
     </div>

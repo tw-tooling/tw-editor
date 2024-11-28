@@ -107,52 +107,58 @@ export const LayerProvider: React.FC<{
   }, [layers.length]);
 
   const removeLayer = useCallback((index: number) => {
-    if (layers.length <= 1) {
-      console.warn('Cannot remove the last layer');
-      return;
-    }
-
     setLayers(prev => {
+      if (prev.length <= 1) {
+        console.warn('Cannot remove the last layer');
+        return prev;
+      }
+
       const newLayers = [...prev];
       newLayers.splice(index, 1);
+
       // Update typeAndId for remaining layers
       newLayers.forEach((layer, i) => {
         if (layer.parsed && 'type' in layer.parsed) {
           layer.typeAndId = (layer.parsed.type << 16) | i;
         }
       });
+
+      // Update selected layer before returning new layers
+      if (selectedLayer >= newLayers.length) {
+        setSelectedLayer(newLayers.length - 1);
+      } else if (selectedLayer === index) {
+        setSelectedLayer(Math.max(0, index - 1));
+      }
+
       return newLayers;
     });
-
-    setSelectedLayer(prev => {
-      if (prev >= index) {
-        return Math.max(0, prev - 1);
-      }
-      return prev;
-    });
-  }, []);
+  }, [selectedLayer]);
 
   const moveLayer = useCallback((fromIndex: number, toIndex: number) => {
     setLayers(prev => {
       const newLayers = [...prev];
       const [movedLayer] = newLayers.splice(fromIndex, 1);
       newLayers.splice(toIndex, 0, movedLayer);
+
       // Update typeAndId for all layers
       newLayers.forEach((layer, i) => {
         if (layer.parsed && 'type' in layer.parsed) {
           layer.typeAndId = (layer.parsed.type << 16) | i;
         }
       });
+
+      // Update selected layer
+      if (selectedLayer === fromIndex) {
+        setSelectedLayer(toIndex);
+      } else if (selectedLayer > fromIndex && selectedLayer <= toIndex) {
+        setSelectedLayer(selectedLayer - 1);
+      } else if (selectedLayer < fromIndex && selectedLayer >= toIndex) {
+        setSelectedLayer(selectedLayer + 1);
+      }
+
       return newLayers;
     });
-
-    setSelectedLayer(prev => {
-      if (prev === fromIndex) return toIndex;
-      if (prev > fromIndex && prev <= toIndex) return prev - 1;
-      if (prev < fromIndex && prev >= toIndex) return prev + 1;
-      return prev;
-    });
-  }, []);
+  }, [selectedLayer]);
 
   const updateLayer = useCallback((index: number, layer: MapItem) => {
     setLayers(prev => {

@@ -4,6 +4,7 @@ import { EditorToolbar } from './EditorToolbar';
 import { LayerPanel } from './LayerPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { MapRenderer } from '../renderer/MapRenderer';
+import { MapExporter } from '../map/MapExporter';
 import styles from './MapEditor.module.css';
 import { LayerProvider, useLayers } from '../contexts/LayerContext';
 
@@ -194,6 +195,10 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     setIsDrawing(false);
   };
 
+  const handleExport = useCallback(() => {
+    MapExporter.downloadMap(mapData);
+  }, [mapData]);
+
   return (
     <div className={styles.editor}>
       <EditorToolbar 
@@ -201,6 +206,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         onToolChange={setTool}
         zoom={zoom}
         onZoomChange={setZoom}
+        onExport={handleExport}
       />
       
       <div className={styles.workspace}>
