@@ -771,7 +771,24 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handleExport]); // Include handleExport in dependencies
+  }, [handleExport]);
+
+  // Prevent browser zoom and scroll
+  useEffect(() => {
+    const preventDefault = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+    document.addEventListener('touchstart', preventDefault, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchmove', preventDefault);
+      document.removeEventListener('touchstart', preventDefault);
+    };
+  }, []);
 
   return (
     <div className={styles.editor}>
