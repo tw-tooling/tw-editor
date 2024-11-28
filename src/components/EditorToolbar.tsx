@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './EditorToolbar.module.css';
 
 interface EditorToolbarProps {
   tool: 'select' | 'brush';
-  onToolChange: (tool: 'select' | 'brush') => void;
+  onToolChange: (tool: 'select' | 'brush', mode: 'primary' | 'secondary') => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onExport: () => void;
 }
+
+type ToolMode = 'primary' | 'secondary';
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   tool,
@@ -16,22 +18,78 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onZoomChange,
   onExport
 }) => {
+  const [selectMode, setSelectMode] = useState<ToolMode>('primary');
+  const [brushMode, setBrushMode] = useState<ToolMode>('primary');
+
+  const handleToolClick = (toolType: 'select' | 'brush', event: React.MouseEvent | React.TouchEvent) => {
+    // For mouse clicks, just change the tool with primary mode
+    if ('button' in event) {
+      onToolChange(toolType, 'primary');
+      return;
+    }
+
+    // For touch events, toggle mode if the current tool is already selected
+    if (toolType === 'select') {
+      if (tool === 'select') {
+        const newMode = selectMode === 'primary' ? 'secondary' : 'primary';
+        setSelectMode(newMode);
+        onToolChange('select', newMode);
+      } else {
+        setSelectMode('primary');
+        onToolChange('select', 'primary');
+      }
+    } else if (toolType === 'brush') {
+      if (tool === 'brush') {
+        const newMode = brushMode === 'primary' ? 'secondary' : 'primary';
+        setBrushMode(newMode);
+        onToolChange('brush', newMode);
+      } else {
+        setBrushMode('primary');
+        onToolChange('brush', 'primary');
+      }
+    }
+  };
+
+  const getToolIcon = (toolType: 'select' | 'brush') => {
+    if (toolType === 'select') {
+      return selectMode === 'primary' ? 'fa-mouse-pointer' : 'fa-paste';
+    } else {
+      return brushMode === 'primary' ? 'fa-paint-brush' : 'fa-eraser';
+    }
+  };
+
+  const getToolTitle = (toolType: 'select' | 'brush') => {
+    if (toolType === 'select') {
+      return selectMode === 'primary' ? 'Select Tool' : 'Insert Tool';
+    } else {
+      return brushMode === 'primary' ? 'Draw Tool' : 'Erase Tool';
+    }
+  };
+
   return (
     <div className={styles.toolbar}>
       <div className={styles.toolGroup}>
         <button
           className={`${styles.tool} ${tool === 'select' ? styles.active : ''}`}
-          onClick={() => onToolChange('select')}
-          title="Select Tool"
+          onClick={(e) => handleToolClick('select', e)}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleToolClick('select', e);
+          }}
+          title={getToolTitle('select')}
         >
-          <i className="fas fa-mouse-pointer" />
+          <i className={`fas ${getToolIcon('select')}`} />
         </button>
         <button
           className={`${styles.tool} ${tool === 'brush' ? styles.active : ''}`}
-          onClick={() => onToolChange('brush')}
-          title="Brush Tool (Right click to erase)"
+          onClick={(e) => handleToolClick('brush', e)}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleToolClick('brush', e);
+          }}
+          title={getToolTitle('brush')}
         >
-          <i className="fas fa-paint-brush" />
+          <i className={`fas ${getToolIcon('brush')}`} />
         </button>
       </div>
 

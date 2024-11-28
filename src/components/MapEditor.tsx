@@ -12,6 +12,11 @@ interface MapEditorProps {
   mapData?: MapData;
 }
 
+interface ToolState {
+  tool: 'select' | 'brush';
+  mode: 'primary' | 'secondary';
+}
+
 const createDefaultMap = (): MapData => {
   // Create all layers from the example
   const layers = [
@@ -139,12 +144,14 @@ const createDefaultMap = (): MapData => {
 
 type MobileView = 'draw' | 'layers' | 'properties';
 
+type ToolMode = 'primary' | 'secondary';
+
 const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData }) => {
   const [mapData, setMapData] = useState(() => initialMapData || createDefaultMap());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [tool, setTool] = useState<'select' | 'brush'>('brush');
+  const [toolState, setToolState] = useState<ToolState>({ tool: 'brush', mode: 'primary' });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -160,6 +167,11 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartZoom, setTouchStartZoom] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('draw');
+  const [touchStartCenter, setTouchStartCenter] = useState<{x: number, y: number} | null>(null);
+  const [tool, setTool] = useState<'select' | 'brush'>('brush');
+  const [selectMode, setSelectMode] = useState<ToolMode>('primary');
+  const [brushMode, setBrushMode] = useState<ToolMode>('primary');
+  const [isTouchInput, setIsTouchInput] = useState(false);
 
   const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
 
@@ -218,72 +230,74 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   }, [mapData]);
 
   const render = useCallback(() => {
-    if (!rendererRef.current) return;
-    rendererRef.current.render(zoom, offset.x, offset.y);
+    if (!canvasRef.current || !rendererRef.current) return;
     
-    if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        const tileSize = 32 * zoom;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
 
-        // Draw active selection if selecting
-        if (selection && (isSelecting || selectedTiles.length === 0)) {
-          const startX = offset.x + selection.start.x * tileSize;
-          const startY = offset.y + selection.start.y * tileSize;
-          const width = (selection.end.x - selection.start.x + 1) * tileSize;
-          const height = (selection.end.y - selection.start.y + 1) * tileSize;
+    rendererRef.current.render(zoom, offset.x, offset.y);
+
+    // Only show preview for mouse input
+    if (!isTouchInput && previewPosition && selectedTiles.length > 0) {
+      const tileSize = 32 * zoom;
+
+      // Draw active selection if selecting
+      if (selection && (isSelecting || selectedTiles.length === 0)) {
+        const startX = offset.x + selection.start.x * tileSize;
+        const startY = offset.y + selection.start.y * tileSize;
+        const width = (selection.end.x - selection.start.x + 1) * tileSize;
+        const height = (selection.end.y - selection.start.y + 1) * tileSize;
+        
+        ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, width, height);
+        ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
+        ctx.fillRect(startX, startY, width, height);
+      }
+
+      // Draw preview of selected tiles
+      if (previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
+        const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
+        const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
+        const previewX = offset.x + previewPosition.x * tileSize;
+        const previewY = offset.y + previewPosition.y * tileSize;
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          previewX, 
+          previewY, 
+          selectionWidth * tileSize, 
+          selectionHeight * tileSize
+        );
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(
+          previewX, 
+          previewY, 
+          selectionWidth * tileSize, 
+          selectionHeight * tileSize
+        );
+
+        // Draw preview tiles with semi-transparency
+        selectedTiles.forEach((tile, i) => {
+          const x = previewPosition.x + (i % selectionWidth);
+          const y = previewPosition.y + Math.floor(i / selectionWidth);
           
-          ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(startX, startY, width, height);
-          ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
-          ctx.fillRect(startX, startY, width, height);
-        }
-
-        // Draw preview of selected tiles
-        if (previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
-          const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
-          const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
-          const previewX = offset.x + previewPosition.x * tileSize;
-          const previewY = offset.y + previewPosition.y * tileSize;
-          
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(
-            previewX, 
-            previewY, 
-            selectionWidth * tileSize, 
-            selectionHeight * tileSize
-          );
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-          ctx.fillRect(
-            previewX, 
-            previewY, 
-            selectionWidth * tileSize, 
-            selectionHeight * tileSize
-          );
-
-          // Draw preview tiles with semi-transparency
-          selectedTiles.forEach((tile, i) => {
-            const x = previewPosition.x + (i % selectionWidth);
-            const y = previewPosition.y + Math.floor(i / selectionWidth);
-            
-            if (rendererRef.current?.tileManager && tile.id !== 0) {
-              ctx.globalAlpha = 0.5;
-              rendererRef.current.tileManager.renderTile(
-                ctx,
-                tile,
-                offset.x + x * tileSize,
-                offset.y + y * tileSize,
-                tileSize
-              );
-              ctx.globalAlpha = 1.0;
-            }
-          });
-        }
+          if (rendererRef.current?.tileManager && tile.id !== 0) {
+            ctx.globalAlpha = 0.5;
+            rendererRef.current.tileManager.renderTile(
+              ctx,
+              tile,
+              offset.x + x * tileSize,
+              offset.y + y * tileSize,
+              tileSize
+            );
+            ctx.globalAlpha = 1.0;
+          }
+        });
       }
     }
-  }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition]);
+  }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition, isTouchInput]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -412,7 +426,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       // Middle mouse or Alt+Left click for panning
       setIsDragging(true);
       setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-    } else if (tool === 'select') {
+    } else if (toolState.tool === 'select') {
       if (e.button === 0) { // Left click for selection
         const tileCoords = screenToTileCoords(e.clientX, e.clientY);
         if (tileCoords) {
@@ -430,7 +444,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           insertTilesAtPosition(tileCoords);
         }
       }
-    } else if (tool === 'brush' && (e.button === 0 || e.button === 2)) {
+    } else if (toolState.tool === 'brush' && (e.button === 0 || e.button === 2)) {
       setIsDrawing(true);
       setIsErasing(e.button === 2);
       const activeLayer = layers[selectedLayer];
@@ -458,13 +472,14 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    setIsTouchInput(false);
     if (isDragging) {
       const newOffset = {
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y
       };
       setOffset(newOffset);
-    } else if (tool === 'select') {
+    } else if (toolState.tool === 'select') {
       const tileCoords = screenToTileCoords(e.clientX, e.clientY);
       if (tileCoords) {
         if (isSelecting) {
@@ -479,7 +494,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           setPreviewPosition(tileCoords);
         }
       }
-    } else if (isDrawing && tool === 'brush') {
+    } else if (isDrawing && toolState.tool === 'brush') {
       const activeLayer = layers[selectedLayer];
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
         const updatedLayer = { ...activeLayer };
@@ -497,6 +512,12 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         render();
       }
     }
+    if (toolState.tool === 'select' && toolState.mode === 'secondary' && selectedTiles.length > 0) {
+      const tileCoords = screenToTileCoords(e.clientX, e.clientY);
+      if (tileCoords) {
+        setPreviewPosition(tileCoords);
+      }
+    }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
@@ -505,7 +526,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     setIsErasing(false);
     setIsInserting(false);
     
-    if (tool === 'select' && isSelecting) {
+    if (toolState.tool === 'select' && isSelecting) {
       setIsSelecting(false);
       if (selection) {
         const tiles = getSelectedTiles();
@@ -539,6 +560,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     setIsInserting(false);
     setIsDrawing(false);
     setIsErasing(false);
+    setIsTouchInput(false);
   };
 
   const getTouchDistance = (touches: React.TouchList) => {
@@ -548,61 +570,153 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  const getTouchCenter = (touches: React.TouchList) => {
+    if (touches.length < 2) return null;
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  };
+
+  const handleToolChange = (newTool: 'select' | 'brush', mode: 'primary' | 'secondary') => {
+    setToolState({ tool: newTool, mode });
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
+    setIsTouchInput(true);
     if (e.touches.length === 2) {
+      // Initialize two-finger gesture for pan/zoom
       const distance = getTouchDistance(e.touches);
-      if (distance !== null) {
+      const center = getTouchCenter(e.touches);
+      
+      if (distance !== null && center !== null) {
         setTouchStartDistance(distance);
         setTouchStartZoom(zoom);
+        setTouchStartCenter(center);
+        setIsDragging(true);
+        setDragStart({
+          x: center.x - offset.x,
+          y: center.y - offset.y
+        });
       }
     } else if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({
-        x: e.touches[0].clientX - offset.x,
-        y: e.touches[0].clientY - offset.y
-      });
+      // Single finger - handle based on current tool and mode
+      if (toolState.tool === 'brush') {
+        setIsDrawing(true);
+        setIsErasing(toolState.mode === 'secondary');
+        const activeLayer = layers[selectedLayer];
+        
+        if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+          const updatedLayer = { ...activeLayer };
+          rendererRef.current?.render(zoom, offset.x, offset.y);
+          rendererRef.current?.handleMouseDown(
+            e.touches[0].clientX,
+            e.touches[0].clientY,
+            activeLayer.parsed as TileLayerItem,
+            (updatedTileLayer) => {
+              updatedLayer.parsed = updatedTileLayer;
+              updateLayer(selectedLayer, updatedLayer);
+            },
+            toolState.mode === 'secondary' ? 0 : undefined
+          );
+          render();
+        }
+      } else if (toolState.tool === 'select') {
+        const tileCoords = screenToTileCoords(e.touches[0].clientX, e.touches[0].clientY);
+        if (tileCoords) {
+          if (toolState.mode === 'primary') {
+            // Selection mode
+            setIsSelecting(true);
+            setPreviewPosition(null);
+            setSelection({
+              start: tileCoords,
+              end: tileCoords
+            });
+          } else {
+            // Insert mode - no preview for touch
+            if (selectedTiles.length > 0) {
+              setIsInserting(true);
+              setPreviewPosition(null);
+              insertTilesAtPosition(tileCoords);
+            }
+          }
+        }
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling while interacting with canvas
-
-    if (e.touches.length === 2 && touchStartDistance && touchStartZoom) {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      // Handle two-finger pan/zoom
       const distance = getTouchDistance(e.touches);
-      if (distance !== null) {
+      const center = getTouchCenter(e.touches);
+      
+      if (distance !== null && center !== null && touchStartDistance && touchStartZoom && touchStartCenter) {
         const scale = distance / touchStartDistance;
         const newZoom = Math.min(Math.max(touchStartZoom * scale, 0.1), 10);
         
-        // Get center point of the two touches
-        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        
-        // Convert center point from screen space to world space
-        const worldX = (centerX - offset.x) / zoom;
-        const worldY = (centerY - offset.y) / zoom;
-        
-        // Calculate new offset to keep the world point under the center point
         const newOffset = {
-          x: centerX - worldX * newZoom,
-          y: centerY - worldY * newZoom
+          x: center.x - (touchStartCenter.x - offset.x) * (newZoom / touchStartZoom),
+          y: center.y - (touchStartCenter.y - offset.y) * (newZoom / touchStartZoom)
         };
 
         setZoom(newZoom);
         setOffset(newOffset);
       }
-    } else if (e.touches.length === 1 && isDragging) {
-      const newOffset = {
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y
-      };
-      setOffset(newOffset);
+    } else if (e.touches.length === 1) {
+      // Handle single finger based on tool and mode
+      if (toolState.tool === 'brush' && isDrawing) {
+        const activeLayer = layers[selectedLayer];
+        if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+          const updatedLayer = { ...activeLayer };
+          rendererRef.current?.render(zoom, offset.x, offset.y);
+          rendererRef.current?.handleMouseDown(
+            e.touches[0].clientX,
+            e.touches[0].clientY,
+            activeLayer.parsed as TileLayerItem,
+            (updatedTileLayer) => {
+              updatedLayer.parsed = updatedTileLayer;
+              updateLayer(selectedLayer, updatedLayer);
+            },
+            toolState.mode === 'secondary' ? 0 : undefined
+          );
+          render();
+        }
+      } else if (toolState.tool === 'select') {
+        const tileCoords = screenToTileCoords(e.touches[0].clientX, e.touches[0].clientY);
+        if (tileCoords) {
+          if (toolState.mode === 'primary' && isSelecting) {
+            // Update selection area
+            setSelection(prev => prev ? {
+              start: prev.start,
+              end: tileCoords
+            } : null);
+          } else if (toolState.mode === 'secondary' && isInserting) {
+            // Insert without preview for touch
+            insertTilesAtPosition(tileCoords);
+          }
+        }
+      }
     }
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
+    setIsDrawing(false);
+    setIsErasing(false);
+    setIsInserting(false);
+    if (isSelecting) {
+      setIsSelecting(false);
+      if (selection) {
+        const tiles = getSelectedTiles();
+        setSelectedTiles(tiles);
+      }
+    }
     setTouchStartDistance(null);
     setTouchStartZoom(null);
+    setTouchStartCenter(null);
+    // Don't reset isTouchInput here to prevent preview flicker
   };
 
   const renderMobileNavigation = () => {
@@ -636,8 +750,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   return (
     <div className={styles.editor}>
       <EditorToolbar 
-        tool={tool}
-        onToolChange={setTool}
+        tool={toolState.tool}
+        onToolChange={handleToolChange}
         zoom={zoom}
         onZoomChange={setZoom}
         onExport={handleExport}
@@ -651,7 +765,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         <div className={styles.canvasContainer}>
           <canvas
             ref={canvasRef}
-            className={`${styles.canvas} ${styles[tool]} ${isErasing ? styles.erasing : ''} ${isDrawing ? styles.drawing : ''} ${isSelecting ? styles.selecting : ''} ${isInserting ? styles.inserting : ''} ${isDragging ? styles.dragging : ''}`}
+            className={`${styles.canvas} ${styles[toolState.tool]} ${isErasing ? styles.erasing : ''} ${isDrawing ? styles.drawing : ''} ${isSelecting ? styles.selecting : ''} ${isInserting ? styles.inserting : ''} ${isDragging ? styles.dragging : ''}`}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
