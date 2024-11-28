@@ -147,8 +147,47 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
+  const [selectedTiles, setSelectedTiles] = useState<{id: number, flags: number}[]>([]);
 
   const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
+
+  // Helper function to convert screen coordinates to tile coordinates
+  const screenToTileCoords = useCallback((screenX: number, screenY: number) => {
+    if (!rendererRef.current || !canvasRef.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const canvasX = screenX - rect.left;
+    const canvasY = screenY - rect.top;
+    const worldX = (canvasX - offset.x) / zoom;
+    const worldY = (canvasY - offset.y) / zoom;
+    return {
+      x: Math.floor(worldX / 32), // Assuming 32px tile size
+      y: Math.floor(worldY / 32)
+    };
+  }, [offset, zoom]);
+
+  // Helper function to get tiles in selection
+  const getSelectedTiles = useCallback(() => {
+    if (!selection || !layers[selectedLayer]?.parsed) return [];
+    const layer = layers[selectedLayer].parsed as TileLayerItem;
+    const tiles: {id: number, flags: number}[] = [];
+    
+    const startX = Math.min(selection.start.x, selection.end.x);
+    const endX = Math.max(selection.start.x, selection.end.x);
+    const startY = Math.min(selection.start.y, selection.end.y);
+    const endY = Math.max(selection.start.y, selection.end.y);
+
+    for (let y = startY; y <= endY; y++) {
+      for (let x = startX; x <= endX; x++) {
+        if (x >= 0 && x < layer.width && y >= 0 && y < layer.height && layer.tileData) {
+          const tile = layer.tileData[y * layer.width + x];
+          tiles.push({ id: tile.id, flags: tile.flags });
+        }
+      }
+    }
+    return tiles;
+  }, [selection, layers, selectedLayer]);
 
   // Initial sync of mapData to layers
   useEffect(() => {
@@ -171,7 +210,25 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const render = useCallback(() => {
     if (!rendererRef.current) return;
     rendererRef.current.render(zoom, offset.x, offset.y);
-  }, [zoom, offset]);
+    
+    // Draw selection rectangle if exists
+    if (selection && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        const tileSize = 32 * zoom;
+        const startX = offset.x + selection.start.x * tileSize;
+        const startY = offset.y + selection.start.y * tileSize;
+        const width = (selection.end.x - selection.start.x + 1) * tileSize;
+        const height = (selection.end.y - selection.start.y + 1) * tileSize;
+        
+        ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, width, height);
+        ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
+        ctx.fillRect(startX, startY, width, height);
+      }
+    }
+  }, [zoom, offset, selection]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -266,8 +323,49 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      // Middle mouse or Alt+Left click for panning
       setIsDragging(true);
       setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+    } else if (tool === 'select') {
+      if (e.button === 0) { // Left click for selection
+        const tileCoords = screenToTileCoords(e.clientX, e.clientY);
+        if (tileCoords) {
+          setIsSelecting(true);
+          setSelection({
+            start: tileCoords,
+            end: tileCoords
+          });
+        }
+      } else if (e.button === 2 && selectedTiles.length > 0) { // Right click for insertion
+        const tileCoords = screenToTileCoords(e.clientX, e.clientY);
+        if (tileCoords && selection) {
+          const activeLayer = layers[selectedLayer];
+          if (activeLayer?.parsed && 'tileData' in activeLayer.parsed) {
+            const updatedLayer = { ...activeLayer };
+            const layer = updatedLayer.parsed as TileLayerItem;
+            
+            // Calculate dimensions of the selection
+            const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
+            
+            // Paste the selected tiles
+            selectedTiles.forEach((tile, i) => {
+              const x = tileCoords.x + (i % selectionWidth);
+              const y = tileCoords.y + Math.floor(i / selectionWidth);
+              
+              if (x >= 0 && x < layer.width && y >= 0 && y < layer.height && layer.tileData) {
+                const index = y * layer.width + x;
+                layer.tileData[index] = {
+                  ...layer.tileData[index],
+                  id: tile.id,
+                  flags: tile.flags
+                };
+              }
+            });
+            
+            updateLayer(selectedLayer, updatedLayer);
+          }
+        }
+      }
     } else if (e.button === 0 && (tool === 'brush' || tool === 'eraser')) {
       setIsDrawing(true);
       const activeLayer = layers[selectedLayer];
@@ -288,7 +386,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             updatedLayer.parsed = updatedTileLayer;
             updateLayer(selectedLayer, updatedLayer);
           },
-          tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
+          tool === 'eraser' ? 0 : undefined
         );
         render();
       }
@@ -302,6 +400,14 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         y: e.clientY - dragStart.y
       };
       setOffset(newOffset);
+    } else if (tool === 'select' && isSelecting) {
+      const tileCoords = screenToTileCoords(e.clientX, e.clientY);
+      if (tileCoords) {
+        setSelection(prev => prev ? {
+          start: prev.start,
+          end: tileCoords
+        } : null);
+      }
     } else if (isDrawing) {
       const activeLayer = layers[selectedLayer];
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
@@ -315,21 +421,45 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             updatedLayer.parsed = updatedTileLayer;
             updateLayer(selectedLayer, updatedLayer);
           },
-          tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
+          tool === 'eraser' ? 0 : undefined
         );
         render();
       }
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     setIsDragging(false);
     setIsDrawing(false);
+    
+    if (tool === 'select' && isSelecting) {
+      setIsSelecting(false);
+      if (selection) {
+        const tiles = getSelectedTiles();
+        setSelectedTiles(tiles);
+      }
+    }
   };
 
   const handleExport = useCallback(() => {
     MapExporter.downloadMap(mapData);
   }, [mapData]);
+
+  // Prevent context menu on right click
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const preventDefault = (e: Event) => e.preventDefault();
+    
+    if (canvas) {
+      canvas.addEventListener('contextmenu', preventDefault);
+    }
+    
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('contextmenu', preventDefault);
+      }
+    };
+  }, []);
 
   return (
     <div className={styles.editor}>
