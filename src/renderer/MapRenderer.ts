@@ -119,24 +119,48 @@ export class MapRenderer {
   }
 
   private renderGrid() {
-    const width = this.ctx.canvas.width / this.ctx.getTransform().a;
-    const height = this.ctx.canvas.height / this.ctx.getTransform().d;
+    // Calculate visible area in world coordinates
+    const transform = this.ctx.getTransform();
+    const canvasWidth = this.ctx.canvas.width;
+    const canvasHeight = this.ctx.canvas.height;
 
+    // Convert canvas bounds to world coordinates
+    const topLeft = this.screenToWorld(0, 0);
+    const bottomRight = this.screenToWorld(canvasWidth, canvasHeight);
+
+    // Add padding to ensure grid covers edges when rotated
+    const padding = this.tileManager.tileSize * 2;
+    const startX = Math.floor(topLeft.x / this.tileManager.tileSize) * this.tileManager.tileSize - padding;
+    const startY = Math.floor(topLeft.y / this.tileManager.tileSize) * this.tileManager.tileSize - padding;
+    const endX = Math.ceil(bottomRight.x / this.tileManager.tileSize) * this.tileManager.tileSize + padding;
+    const endY = Math.ceil(bottomRight.y / this.tileManager.tileSize) * this.tileManager.tileSize + padding;
+
+    // Draw grid
     this.ctx.beginPath();
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    this.ctx.lineWidth = 1 / this.ctx.getTransform().a;
+    this.ctx.lineWidth = 1 / transform.a;  // Scale line width with zoom
 
-    for (let x = 0; x < width; x += this.tileManager.tileSize) {
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, height);
+    // Vertical lines
+    for (let x = startX; x <= endX; x += this.tileManager.tileSize) {
+      this.ctx.moveTo(x, startY);
+      this.ctx.lineTo(x, endY);
     }
 
-    for (let y = 0; y < height; y += this.tileManager.tileSize) {
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(width, y);
+    // Horizontal lines
+    for (let y = startY; y <= endY; y += this.tileManager.tileSize) {
+      this.ctx.moveTo(startX, y);
+      this.ctx.lineTo(endX, y);
     }
 
     this.ctx.stroke();
+  }
+
+  private screenToWorld(screenX: number, screenY: number) {
+    const transform = this.ctx.getTransform();
+    return {
+      x: (screenX - transform.e) / transform.a,
+      y: (screenY - transform.f) / transform.d
+    };
   }
 
   private renderTileLayer(layer: TileLayerItem) {
