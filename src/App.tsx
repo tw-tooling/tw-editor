@@ -1,10 +1,10 @@
 import React from 'react';
-import { MapEditor } from './components/MapEditor';
+import { MinimalMapTest } from './components/MinimalMapTest';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 function App() {
   return (
-    <MapEditor />
+    <MinimalMapTest />
   );
 }
 

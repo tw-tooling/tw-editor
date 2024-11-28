@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.4.0",
+    "@types/pako": "^2.0.3",
+    "pako": "^2.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -26,4 +28,4 @@
     "typescript": "^5.0.2",
     "vite": "^4.3.0"
   }
-} 
+}

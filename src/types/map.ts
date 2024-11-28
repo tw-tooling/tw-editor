@@ -31,6 +31,7 @@ export interface ImageItem {
   external: boolean;
   name: string;
   data: number;  // Index to image data
+  version?: number;  // Added for export
 }
 
 // Group item

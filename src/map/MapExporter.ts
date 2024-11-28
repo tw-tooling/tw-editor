@@ -1,4 +1,4 @@
-import { MapData, MapItem, LayerType, TileLayerItem, ItemType } from '../types/map';
+import { MapData, MapItem, LayerType, TileLayerItem, ItemType, ImageItem } from '../types/map';
 
 export class MapExporter {
   private static HEADER_SIZE = 36;
@@ -18,7 +18,7 @@ export class MapExporter {
       const size = this.calculateItemDataSize(item) * 4; // Each data item is 4 bytes
       itemSizes.push(size);
       itemOffsets.push(currentItemOffset);
-      currentItemOffset += this.ITEM_SIZE + size;
+      currentItemOffset += size;
     });
 
     // Calculate data offsets
@@ -49,10 +49,9 @@ export class MapExporter {
     let offset = 0;
 
     // Write "DATA" signature
-    view.setUint8(offset++, 68); // 'D'
-    view.setUint8(offset++, 65); // 'A'
-    view.setUint8(offset++, 84); // 'T'
-    view.setUint8(offset++, 65); // 'A'
+    const signature = new TextEncoder().encode('DATA');
+    new Uint8Array(buffer, offset, 4).set(signature);
+    offset += 4;
 
     // Write header
     view.setInt32(offset, 4, true); offset += 4; // version
@@ -91,18 +90,138 @@ export class MapExporter {
 
     // Write items
     mapCopy.items.forEach((item, index) => {
-      // Write type and ID
-      view.setInt32(offset, item.typeAndId, true);
-      offset += 4;
-
-      // Write size
-      view.setInt32(offset, itemSizes[index], true);
-      offset += 4;
-
       // Write item data
       if (item.parsed) {
-        this.writeItemData(view, offset, item);
-        offset += itemSizes[index];
+        const type = item.typeAndId >> 16;
+        switch (type) {
+          case ItemType.VERSION:
+            view.setInt32(offset, 1, true); // version 1
+            offset += 4;
+            break;
+
+          case ItemType.INFO:
+            view.setInt32(offset, 1, true); // version 1
+            offset += 4;
+            for (let i = 0; i < 5; i++) {
+              view.setInt32(offset, 0xffffffff, true);
+              offset += 4;
+            }
+            break;
+
+          case ItemType.IMAGE:
+            const img = item.parsed as ImageItem;
+            view.setInt32(offset, 1, true); // version
+            offset += 4;
+            view.setInt32(offset, img.width, true);
+            offset += 4;
+            view.setInt32(offset, img.height, true);
+            offset += 4;
+            view.setInt32(offset, img.external ? 1 : 0, true);
+            offset += 4;
+            view.setInt32(offset, img.data, true); // image index
+            offset += 4;
+            view.setInt32(offset, 0xffffffff, true); // name data
+            offset += 4;
+            break;
+
+          case ItemType.GROUP:
+            if ('offsetX' in item.parsed) {
+              view.setInt32(offset, 3, true); // version
+              offset += 4;
+              view.setInt32(offset, item.parsed.offsetX, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.offsetY, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.parallaxX, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.parallaxY, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.startLayer, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.numLayers, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.useClipping, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.clipX, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.clipY, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.clipW, true);
+              offset += 4;
+              view.setInt32(offset, item.parsed.clipH, true);
+              offset += 4;
+              // Write name
+              for (let i = 0; i < 3; i++) {
+                view.setInt32(offset, 0x80808080, true);
+                offset += 4;
+              }
+            }
+            break;
+
+          case ItemType.LAYER:
+            if ('tileData' in item.parsed) {
+              const layer = item.parsed as TileLayerItem;
+
+              // Write layer header
+              view.setInt32(offset, 3, true); // version
+              offset += 4;
+              view.setInt32(offset, layer.type, true);
+              offset += 4;
+              view.setInt32(offset, layer.flags, true);
+              offset += 4;
+
+              // Write layer info
+              view.setInt32(offset, layer.width, true);
+              offset += 4;
+              view.setInt32(offset, layer.height, true);
+              offset += 4;
+              view.setInt32(offset, layer.flags, true);
+              offset += 4;
+
+              // Write color
+              view.setInt32(offset, layer.color.r, true);
+              offset += 4;
+              view.setInt32(offset, layer.color.g, true);
+              offset += 4;
+              view.setInt32(offset, layer.color.b, true);
+              offset += 4;
+              view.setInt32(offset, layer.color.a, true);
+              offset += 4;
+
+              // Write color env and image
+              view.setInt32(offset, -1, true); // colorEnv
+              offset += 4;
+              view.setInt32(offset, 0, true); // colorEnvOffset
+              offset += 4;
+              view.setInt32(offset, 0, true); // image (reference to first image)
+              offset += 4;
+              view.setInt32(offset, 0, true); // data
+              offset += 4;
+
+              // Write name (3 ints)
+              for (let i = 0; i < 3; i++) {
+                view.setInt32(offset, 0x80808080, true);
+                offset += 4;
+              }
+
+              // Write reserved (5 ints)
+              for (let i = 0; i < 5; i++) {
+                view.setInt32(offset, 0xffffffff, true);
+                offset += 4;
+              }
+
+              // Write tile data
+              layer.tileData?.forEach((tile, i) => {
+                const tileOffset = offset + (i * 4);
+                view.setUint8(tileOffset, tile.id);
+                view.setUint8(tileOffset + 1, tile.flags);
+                view.setUint8(tileOffset + 2, tile.skip);
+                view.setUint8(tileOffset + 3, tile.reserved);
+              });
+              offset += layer.width * layer.height * 4;
+            }
+            break;
+        }
       }
     });
 
@@ -142,7 +261,65 @@ export class MapExporter {
       }
     });
 
-    // Add existing items
+    // Add image item (default game tileset)
+    items.push({
+      typeAndId: (ItemType.IMAGE << 16) | 0,
+      size: 24,
+      data: new ArrayBuffer(24),
+      parsed: {
+        version: 1,
+        width: 1024,
+        height: 1024,
+        external: true,
+        imageIndex: 0,
+        name: "grass_main"
+      }
+    });
+
+    // Add group item
+    items.push({
+      typeAndId: (ItemType.GROUP << 16) | 0,
+      size: 60,
+      data: new ArrayBuffer(60),
+      parsed: {
+        version: 3,
+        offsetX: 0,
+        offsetY: 0,
+        parallaxX: 100,
+        parallaxY: 100,
+        startLayer: 0,
+        numLayers: mapData.items.length + 1,
+        useClipping: 0,
+        clipX: 0,
+        clipY: 0,
+        clipW: 0,
+        clipH: 0,
+        name: "Game"
+      }
+    });
+
+    // Add game layer
+    items.push({
+      typeAndId: (ItemType.LAYER << 16) | 0,
+      size: 0,
+      data: new ArrayBuffer(0),
+      parsed: {
+        type: LayerType.GAME,
+        flags: 0,
+        version: 0,
+        width: 50,
+        height: 50,
+        color: { r: 255, g: 255, b: 255, a: 255 },
+        colorEnv: -1,
+        colorEnvOffset: 0,
+        image: -1,
+        data: 0,
+        name: "Game",
+        tileData: new Array(50 * 50).fill({ id: 0, flags: 0, skip: 0, reserved: 0 })
+      }
+    });
+
+    // Add existing layer items
     items.push(...mapData.items);
 
     // Add envpoint item at the end
@@ -165,11 +342,13 @@ export class MapExporter {
       }
     });
 
-    const itemTypes = Array.from(typeMap.entries()).map(([typeId, info]) => ({
-      typeId,
-      start: info.start,
-      num: info.count
-    }));
+    const itemTypes = Array.from(typeMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([typeId, info]) => ({
+        typeId,
+        start: info.start,
+        num: info.count
+      }));
 
     return {
       ...mapData,
@@ -187,10 +366,23 @@ export class MapExporter {
         return 1; // [version]
       case ItemType.INFO:
         return 6; // [version, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff]
+      case ItemType.IMAGE:
+        if ('width' in item.parsed) {
+          // [version, width, height, external, imageIndex, 0xffffffff]
+          return 6;
+        }
+        return 0;
+      case ItemType.GROUP:
+        if ('offsetX' in item.parsed) {
+          // version, offsets, parallax, layers, clipping, name (3 ints)
+          return 12 + 3;
+        }
+        return 0;
       case ItemType.LAYER:
         if ('tileData' in item.parsed) {
           const layer = item.parsed as TileLayerItem;
-          return 3 + (layer.width * layer.height); // [version, type, flags] + tile data
+          // [version, type, flags, width, height, flags, color(r,g,b,a), colorEnv, colorEnvOffset, image, data] + name (3) + reserved (5)
+          return 15 + 3 + 5 + (layer.width * layer.height);
         }
         return 0;
       default:
@@ -199,29 +391,128 @@ export class MapExporter {
   }
 
   private static writeItemData(view: DataView, offset: number, item: MapItem): void {
+    if (!item.parsed) return;
+
     const type = item.typeAndId >> 16;
+    let currentOffset = offset;
     
     switch (type) {
       case ItemType.VERSION:
-        view.setInt32(offset, 1, true); // version 1
+        view.setInt32(currentOffset, 1, true); // version 1
         break;
+
       case ItemType.INFO:
-        view.setInt32(offset, 1, true); // version 1
+        view.setInt32(currentOffset, 1, true); // version 1
         for (let i = 0; i < 5; i++) {
-          view.setInt32(offset + 4 + (i * 4), 0xffffffff, true);
+          view.setInt32(currentOffset + 4 + (i * 4), 0xffffffff, true);
         }
         break;
+
+      case ItemType.IMAGE:
+        if ('width' in item.parsed) {
+          view.setInt32(currentOffset, item.parsed.version, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.width, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.height, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.external ? 1 : 0, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.imageIndex, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, 0xffffffff, true); // name data
+        }
+        break;
+
+      case ItemType.GROUP:
+        if ('offsetX' in item.parsed) {
+          view.setInt32(currentOffset, 3, true); // version
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.offsetX, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.offsetY, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.parallaxX, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.parallaxY, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.startLayer, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.numLayers, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.useClipping, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.clipX, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.clipY, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.clipW, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, item.parsed.clipH, true);
+          currentOffset += 4;
+          // Write name as fixed 3 ints
+          for (let i = 0; i < 3; i++) {
+            view.setInt32(currentOffset, 0x80808080, true);
+            currentOffset += 4;
+          }
+        }
+        break;
+
       case ItemType.LAYER:
         if ('tileData' in item.parsed) {
           const layer = item.parsed as TileLayerItem;
+
           // Write layer header
-          view.setInt32(offset, layer.version, true);
-          view.setInt32(offset + 4, layer.type, true);
-          view.setInt32(offset + 8, layer.flags, true);
+          view.setInt32(currentOffset, 3, true); // version
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.type, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.flags, true);
+          currentOffset += 4;
+
+          // Write layer info
+          view.setInt32(currentOffset, layer.width, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.height, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.flags, true);
+          currentOffset += 4;
+
+          // Write color
+          view.setInt32(currentOffset, layer.color.r, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.color.g, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.color.b, true);
+          currentOffset += 4;
+          view.setInt32(currentOffset, layer.color.a, true);
+          currentOffset += 4;
+
+          // Write color env and image
+          view.setInt32(currentOffset, -1, true); // colorEnv
+          currentOffset += 4;
+          view.setInt32(currentOffset, 0, true); // colorEnvOffset
+          currentOffset += 4;
+          view.setInt32(currentOffset, 0, true); // image (reference to first image)
+          currentOffset += 4;
+          view.setInt32(currentOffset, 0, true); // data
+          currentOffset += 4;
+
+          // Write name (3 ints)
+          for (let i = 0; i < 3; i++) {
+            view.setInt32(currentOffset, 0x80808080, true);
+            currentOffset += 4;
+          }
+
+          // Write reserved (5 ints)
+          for (let i = 0; i < 5; i++) {
+            view.setInt32(currentOffset, 0xffffffff, true);
+            currentOffset += 4;
+          }
+
           // Write tile data
-          offset += 12;
           layer.tileData?.forEach((tile, i) => {
-            const tileOffset = offset + (i * 4);
+            const tileOffset = currentOffset + (i * 4);
             view.setUint8(tileOffset, tile.id);
             view.setUint8(tileOffset + 1, tile.flags);
             view.setUint8(tileOffset + 2, tile.skip);
