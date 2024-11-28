@@ -750,6 +750,32 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     );
   };
 
+  // Add keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case '1':
+          setToolState({ tool: 'select', mode: 'primary' });
+          break;
+        case '2':
+          setToolState({ tool: 'brush', mode: 'primary' });
+          setPreviewPosition(null);
+          break;
+        case '0':
+          handleExport();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [handleExport]); // Include handleExport in dependencies
+
   return (
     <div className={styles.editor}>
       <EditorToolbar 
@@ -759,6 +785,11 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         zoom={zoom}
         onZoomChange={setZoom}
         onExport={handleExport}
+        shortcuts={{
+          select: '1',
+          brush: '2',
+          export: '0'
+        }}
       />
       
       <div className={styles.workspace}>

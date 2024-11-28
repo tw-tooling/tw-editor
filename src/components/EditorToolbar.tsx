@@ -8,6 +8,11 @@ interface EditorToolbarProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onExport: () => void;
+  shortcuts: {
+    select: string;
+    brush: string;
+    export: string;
+  };
 }
 
 type ToolMode = 'primary' | 'secondary';
@@ -18,7 +23,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onToolChange,
   zoom,
   onZoomChange,
-  onExport
+  onExport,
+  shortcuts
 }) => {
   const [selectMode, setSelectMode] = useState<ToolMode>('primary');
   const [brushMode, setBrushMode] = useState<ToolMode>('primary');
@@ -70,10 +76,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   };
 
   const getToolTitle = (toolType: 'select' | 'brush') => {
+    const shortcut = toolType === 'select' ? shortcuts.select : shortcuts.brush;
     if (toolType === 'select') {
-      return selectMode === 'primary' ? 'Select Tool' : 'Insert Tool';
+      return `${selectMode === 'primary' ? 'Select Tool' : 'Insert Tool'} (${shortcut})`;
     } else {
-      return brushMode === 'primary' ? 'Draw Tool' : 'Erase Tool';
+      return `${brushMode === 'primary' ? 'Draw Tool' : 'Erase Tool'} (${shortcut})`;
     }
   };
 
@@ -126,7 +133,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <button
           className={styles.tool}
           onClick={onExport}
-          title="Export Map"
+          title={`Export Map (${shortcuts.export})`}
         >
           <i className="fas fa-download" />
         </button>
