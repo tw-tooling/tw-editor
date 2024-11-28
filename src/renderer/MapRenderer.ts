@@ -23,8 +23,6 @@ export class MapRenderer {
   }
 
   public render(zoom: number, offsetX: number = 0, offsetY: number = 0) {
-    console.log('Rendering with:', { zoom, offsetX, offsetY });
-    
     this.ctx.save();
     
     // Clear the entire canvas first
@@ -60,7 +58,8 @@ export class MapRenderer {
     x: number, 
     y: number, 
     selectedLayer: TileLayerItem,
-    onLayerUpdate?: (updatedLayer: TileLayerItem) => void
+    onLayerUpdate?: (updatedLayer: TileLayerItem) => void,
+    forceTileId?: number
   ) {
     if (!selectedLayer) {
       console.warn('No layer selected');
@@ -79,17 +78,14 @@ export class MapRenderer {
     const worldX = (canvasX - transform.e) / transform.a;
     const worldY = (canvasY - transform.f) / transform.d;
 
-    console.log('Placing tile at:', { worldX, worldY }, 'on layer:', selectedLayer);
-
     const success = this.tileManager.setTileAtPosition(
       worldX,
       worldY,
       selectedLayer,
-      this.selectedTileId
+      forceTileId !== undefined ? forceTileId : this.selectedTileId
     );
 
     if (success && onLayerUpdate) {
-      console.log('Tile placed successfully');
       onLayerUpdate({ ...selectedLayer });
       this.render(transform.a, transform.e, transform.f);
     }

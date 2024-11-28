@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useLayers } from '../contexts/LayerContext';
-import { LayerType } from '../types/map';
+import { LayerType, TileLayerItem } from '../types/map';
 import styles from './LayerPanel.module.css';
 
 export const LayerPanel: React.FC = () => {
@@ -12,12 +12,6 @@ export const LayerPanel: React.FC = () => {
     removeLayer, 
     moveLayer 
   } = useLayers();
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Layers:', layers);
-    console.log('Selected layer:', selectedLayer);
-  }, [layers, selectedLayer]);
 
   const handleAddLayer = () => {
     const type = LayerType.TILES; // Default to tile layer for now
@@ -53,20 +47,6 @@ export const LayerPanel: React.FC = () => {
         return 'fa-gamepad';
       default:
         return 'fa-layer-group';
-    }
-  };
-
-  const getLayerName = (typeId: number, index: number) => {
-    const type = typeId >> 16;
-    switch (type) {
-      case LayerType.TILES:
-        return `Tile Layer ${index}`;
-      case LayerType.QUADS:
-        return `Quad Layer ${index}`;
-      case LayerType.GAME:
-        return 'Game Layer';
-      default:
-        return `Layer ${index}`;
     }
   };
 
@@ -111,7 +91,7 @@ export const LayerPanel: React.FC = () => {
               </div>
               <div className={styles.layerContent}>
                 <i className={`fas ${getLayerIcon(layer.typeAndId)}`} />
-                <span>{layerData.name || `Layer ${index + 1}`}</span>
+                <span>{layerData.name}</span>
               </div>
             </div>
           );

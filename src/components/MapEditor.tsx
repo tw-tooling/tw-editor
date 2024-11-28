@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { MapData, TileLayerItem, LayerType } from '../types/map';
+import { MapData, TileLayerItem, LayerType, MapItem } from '../types/map';
 import { EditorToolbar } from './EditorToolbar';
 import { LayerPanel } from './LayerPanel';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -12,14 +12,6 @@ interface MapEditorProps {
 }
 
 const createDefaultMap = (): MapData => {
-  // Create a default tile layer with some tiles
-  const defaultTileData = new Array(50 * 50).fill(null).map((_, index) => ({
-    id: Math.random() < 0.2 ? Math.floor(Math.random() * 5) + 1 : 0, // 20% chance of having a tile
-    flags: 0,
-    skip: 0,
-    reserved: 0
-  }));
-
   const defaultLayer: MapItem = {
     typeAndId: (LayerType.TILES << 16) | 0,
     size: 0,
@@ -35,8 +27,13 @@ const createDefaultMap = (): MapData => {
       colorEnvOffset: 0,
       image: -1,
       data: 0,
-      tileData: defaultTileData,
-      name: 'Tile Layer 1'
+      tileData: new Array(50 * 50).fill(null).map(() => ({
+        id: 0,
+        flags: 0,
+        skip: 0,
+        reserved: 0
+      })),
+      name: 'Tile Layer 0'
     } as TileLayerItem
   };
 
@@ -65,47 +62,27 @@ const createDefaultMap = (): MapData => {
 };
 
 const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData }) => {
-  const [mapData, setMapData] = useState(() => {
-    const data = initialMapData || createDefaultMap();
-    return data;
-  });
-
+  const [mapData, setMapData] = useState(() => initialMapData || createDefaultMap());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [tool, setTool] = useState<'select' | 'brush' | 'fill'>('brush');
+  const [tool, setTool] = useState<'select' | 'brush' | 'fill' | 'eraser'>('brush');
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Get the layer context
-  const { selectedLayer, setLayers, layers } = useLayers();
+  const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
 
-  // Keep layer context in sync with mapData
+  // Initial sync of mapData to layers
   useEffect(() => {
-    if (mapData.items.length > 0) {
-      setLayers(mapData.items);
-    }
-  }, [mapData.items, setLayers]);
+    setLayers(mapData.items);
+  }, []);
 
-  // Keep mapData in sync with layer context
+  // Keep mapData in sync with layers
   useEffect(() => {
-    if (layers.length > 0) {
-      setMapData(prev => ({
-        ...prev,
-        items: layers
-      }));
-    }
+    setMapData(prev => ({ ...prev, items: layers }));
   }, [layers]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Selected layer:', selectedLayer);
-    console.log('Map data items:', mapData.items);
-    console.log('Active layer:', mapData.items[selectedLayer]);
-    console.log('Layer context layers:', layers);
-  }, [selectedLayer, mapData, layers]);
 
   // Update renderer when mapData changes
   useEffect(() => {
@@ -114,13 +91,6 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       render();
     }
   }, [mapData]);
-
-  // Update renderer when selected layer changes
-  useEffect(() => {
-    if (rendererRef.current) {
-      render();
-    }
-  }, [selectedLayer]);
 
   const render = useCallback(() => {
     if (!rendererRef.current) return;
@@ -143,16 +113,11 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     updateSize();
     window.addEventListener('resize', updateSize);
 
-    // Initialize renderer
     rendererRef.current = new MapRenderer(ctx, mapData);
-    
-    // Ensure initial render
-    requestAnimationFrame(() => {
-      rendererRef.current?.render(zoom, offset.x, offset.y);
-    });
+    render();
 
     return () => window.removeEventListener('resize', updateSize);
-  }, [mapData]);
+  }, []);
 
   useEffect(() => {
     render();
@@ -164,7 +129,6 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoom(z => Math.min(Math.max(z * delta, 0.1), 10));
     } else {
-      // Pan with wheel
       setOffset(prev => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY
@@ -176,9 +140,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-    } else if (e.button === 0 && tool === 'brush') {
+    } else if (e.button === 0 && (tool === 'brush' || tool === 'eraser')) {
       setIsDrawing(true);
-      const activeLayer = mapData.items[selectedLayer];
+      const activeLayer = layers[selectedLayer];
       
       if (!activeLayer) {
         console.warn('No active layer found at index:', selectedLayer);
@@ -193,13 +157,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           activeLayer.parsed as TileLayerItem,
           (updatedTileLayer) => {
             updatedLayer.parsed = updatedTileLayer;
-            const newItems = [...mapData.items];
-            newItems[selectedLayer] = updatedLayer;
-            setMapData(prev => ({
-              ...prev,
-              items: newItems
-            }));
-          }
+            updateLayer(selectedLayer, updatedLayer);
+          },
+          tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
         );
       }
     }
@@ -212,7 +172,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         y: e.clientY - dragStart.y
       });
     } else if (isDrawing) {
-      const activeLayer = mapData.items[selectedLayer];
+      const activeLayer = layers[selectedLayer];
       if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
         const updatedLayer = { ...activeLayer };
         rendererRef.current?.handleMouseDown(
@@ -221,10 +181,9 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           activeLayer.parsed as TileLayerItem,
           (updatedTileLayer) => {
             updatedLayer.parsed = updatedTileLayer;
-            const newItems = [...mapData.items];
-            newItems[selectedLayer] = updatedLayer;
-            setMapData({ ...mapData, items: newItems });
-          }
+            updateLayer(selectedLayer, updatedLayer);
+          },
+          tool === 'eraser' ? 0 : undefined // Use tile ID 0 for eraser
         );
       }
     }
@@ -272,7 +231,6 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   );
 };
 
-// Wrapper component to handle context
 export const MapEditor: React.FC<MapEditorProps> = (props) => {
   return (
     <LayerProvider initialLayers={props.mapData?.items || []}>

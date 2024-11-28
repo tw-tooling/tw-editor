@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { MapItem, LayerType, TileLayerItem } from '../types/map';
 
 interface LayerContextType {
@@ -9,6 +9,7 @@ interface LayerContextType {
   addLayer: (type: LayerType) => void;
   removeLayer: (index: number) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
+  updateLayer: (index: number, layer: MapItem) => void;
 }
 
 const LayerContext = createContext<LayerContextType | null>(null);
@@ -34,7 +35,12 @@ export const LayerProvider: React.FC<{
         colorEnvOffset: 0,
         image: -1,
         data: 0,
-        tileData: [],
+        tileData: new Array(50 * 50).fill(null).map(() => ({
+          id: 0,
+          flags: 0,
+          skip: 0,
+          reserved: 0
+        })),
         name: 'Tile Layer 0'
       } as TileLayerItem
     };
@@ -50,8 +56,6 @@ export const LayerProvider: React.FC<{
 
   const findFirstAvailableLayerNumber = (): number => {
     const usedNumbers = new Set<number>();
-    
-    // Extract numbers from existing layer names
     layers.forEach(layer => {
       if (layer.parsed && 'name' in layer.parsed) {
         const match = layer.parsed.name.match(/^Tile Layer (\d+)$/);
@@ -60,8 +64,6 @@ export const LayerProvider: React.FC<{
         }
       }
     });
-    
-    // Find first unused number
     let number = 0;
     while (usedNumbers.has(number)) {
       number++;
@@ -69,7 +71,7 @@ export const LayerProvider: React.FC<{
     return number;
   };
 
-  const createEmptyTileLayer = (type: LayerType, index: number): MapItem => {
+  const createEmptyTileLayer = (type: LayerType): MapItem => {
     const layer: TileLayerItem = {
       type,
       flags: 0,
@@ -81,81 +83,96 @@ export const LayerProvider: React.FC<{
       colorEnvOffset: 0,
       image: -1,
       data: 0,
-      tileData: [],
+      tileData: new Array(50 * 50).fill(null).map(() => ({
+        id: 0,
+        flags: 0,
+        skip: 0,
+        reserved: 0
+      })),
       name: `Tile Layer ${findFirstAvailableLayerNumber()}`
     };
 
     return {
-      typeAndId: (type << 16) | index,
+      typeAndId: (type << 16) | layers.length,
       size: 0,
       data: new ArrayBuffer(0),
       parsed: layer
     };
   };
 
-  const addLayer = (type: LayerType) => {
-    const newLayer = createEmptyTileLayer(type, layers.length);
-    const newLayers = [...layers, newLayer];
-    setLayers(newLayers);
-    setSelectedLayer(newLayers.length - 1);
-  };
+  const addLayer = useCallback((type: LayerType) => {
+    const newLayer = createEmptyTileLayer(type);
+    setLayers(prev => [...prev, newLayer]);
+    setSelectedLayer(layers.length);
+  }, [layers.length]);
 
-  const removeLayer = (index: number) => {
+  const removeLayer = useCallback((index: number) => {
     if (layers.length <= 1) {
       console.warn('Cannot remove the last layer');
       return;
     }
-    
-    const newLayers = [...layers];
-    newLayers.splice(index, 1);
 
-    // Update typeAndId for remaining layers
-    newLayers.forEach((layer, i) => {
-      if (layer.parsed && 'type' in layer.parsed) {
-        layer.typeAndId = (layer.parsed.type << 16) | i;
-      }
+    setLayers(prev => {
+      const newLayers = [...prev];
+      newLayers.splice(index, 1);
+      // Update typeAndId for remaining layers
+      newLayers.forEach((layer, i) => {
+        if (layer.parsed && 'type' in layer.parsed) {
+          layer.typeAndId = (layer.parsed.type << 16) | i;
+        }
+      });
+      return newLayers;
     });
 
-    setLayers(newLayers);
-
-    if (selectedLayer >= newLayers.length) {
-      setSelectedLayer(newLayers.length - 1);
-    } else if (selectedLayer === index) {
-      setSelectedLayer(Math.max(0, index - 1));
-    }
-  };
-
-  const moveLayer = (fromIndex: number, toIndex: number) => {
-    const newLayers = [...layers];
-    const [movedLayer] = newLayers.splice(fromIndex, 1);
-    newLayers.splice(toIndex, 0, movedLayer);
-
-    // Update typeAndId for all layers
-    newLayers.forEach((layer, i) => {
-      if (layer.parsed && 'type' in layer.parsed) {
-        layer.typeAndId = (layer.parsed.type << 16) | i;
+    setSelectedLayer(prev => {
+      if (prev >= index) {
+        return Math.max(0, prev - 1);
       }
+      return prev;
+    });
+  }, []);
+
+  const moveLayer = useCallback((fromIndex: number, toIndex: number) => {
+    setLayers(prev => {
+      const newLayers = [...prev];
+      const [movedLayer] = newLayers.splice(fromIndex, 1);
+      newLayers.splice(toIndex, 0, movedLayer);
+      // Update typeAndId for all layers
+      newLayers.forEach((layer, i) => {
+        if (layer.parsed && 'type' in layer.parsed) {
+          layer.typeAndId = (layer.parsed.type << 16) | i;
+        }
+      });
+      return newLayers;
     });
 
-    setLayers(newLayers);
+    setSelectedLayer(prev => {
+      if (prev === fromIndex) return toIndex;
+      if (prev > fromIndex && prev <= toIndex) return prev - 1;
+      if (prev < fromIndex && prev >= toIndex) return prev + 1;
+      return prev;
+    });
+  }, []);
 
-    if (selectedLayer === fromIndex) {
-      setSelectedLayer(toIndex);
-    }
-  };
+  const updateLayer = useCallback((index: number, layer: MapItem) => {
+    setLayers(prev => {
+      const newLayers = [...prev];
+      newLayers[index] = layer;
+      return newLayers;
+    });
+  }, []);
 
   return (
-    <LayerContext.Provider
-      value={{
-        layers,
-        selectedLayer,
-        setSelectedLayer,
-        setLayers,
-        addLayer,
-        removeLayer,
-        moveLayer,
-      }}
-    >
+    <LayerContext.Provider value={{
+      layers,
+      selectedLayer,
+      setSelectedLayer,
+      setLayers,
+      addLayer,
+      removeLayer,
+      moveLayer,
+      updateLayer
+    }}>
       {children}
     </LayerContext.Provider>
   );
