@@ -1,4 +1,4 @@
-import { ItemType, LayerType } from '../types/map';
+import { ItemType, LayerType, MapData, ImageItem } from '../types/map';
 import pako from 'pako';
 
 interface SimpleItem {
@@ -23,15 +23,20 @@ export class MapExporter {
     FLAGSTAND_BLUE: 196,
   };
 
-  public static exportMap(): ArrayBuffer {
+  public static exportMap(mapData: MapData): ArrayBuffer {
     const mapWidth = 100;
     const mapHeight = 50;
 
-    // Define image names and create their byte arrays
-    const imageNames = ["grass_main", "generic_unhookable", "desert_main"];
-    const imageData = imageNames.map(name => {
+    // Get image items and their names
+    const imageItems = mapData.items
+      .filter(item => (item.typeAndId >> 16) === ItemType.IMAGE)
+      .sort((a, b) => (a.typeAndId & 0xFFFF) - (b.typeAndId & 0xFFFF));
+
+    // Create image name byte arrays
+    const imageData = imageItems.map(item => {
+      if (!item.parsed || !('name' in item.parsed)) return new Uint8Array(0);
       const encoder = new TextEncoder();
-      return encoder.encode(name + '\0');
+      return encoder.encode(item.parsed.name + '\0');
     });
 
     // Create game layer data (with walls and spawns)
@@ -126,11 +131,11 @@ export class MapExporter {
         data: [1, -1, -1, -1, -1, -1]  // version 1 + empty strings
       },
       // Image items
-      ...imageNames.map((_, i) => ({
-        typeAndId: (ItemType.IMAGE << 16) | i,
+      ...imageItems.map((item, i) => ({
+        typeAndId: item.typeAndId,
         data: [1, 1024, 1024, 1, i, -1]  // version, width, height, external, image_id, name
       })),
-      // Main group
+      // Group item
       {
         typeAndId: (ItemType.GROUP << 16) | 0,
         data: [3, 0, 0, 100, 100, 0, 4, 0, 0, 0, 0, 0, -1, -1, -1]  // 4 layers
@@ -194,10 +199,10 @@ export class MapExporter {
     const itemTypes = [
       { typeId: ItemType.VERSION, start: 0, num: 1 },
       { typeId: ItemType.INFO, start: 1, num: 1 },
-      { typeId: ItemType.IMAGE, start: 2, num: 3 },
-      { typeId: ItemType.GROUP, start: 5, num: 1 },
-      { typeId: ItemType.LAYER, start: 6, num: 4 },
-      { typeId: ItemType.ENVPOINT, start: 10, num: 1 }
+      { typeId: ItemType.IMAGE, start: 2, num: imageItems.length },
+      { typeId: ItemType.GROUP, start: 2 + imageItems.length, num: 1 },
+      { typeId: ItemType.LAYER, start: 3 + imageItems.length, num: 4 },
+      { typeId: ItemType.ENVPOINT, start: 3 + imageItems.length + 4, num: 1 }
     ];
 
     // Calculate offsets and sizes
@@ -289,8 +294,8 @@ export class MapExporter {
     return buffer;
   }
 
-  public static downloadMap(filename: string = 'untitled.map'): void {
-    const buffer = this.exportMap();
+  public static downloadMap(mapData: MapData, filename: string = 'untitled.map'): void {
+    const buffer = this.exportMap(mapData);
     const blob = new Blob([buffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     

@@ -196,8 +196,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   };
 
   const handleExport = useCallback(() => {
-    MapExporter.downloadMap('untitled.map');
-  }, []);
+    MapExporter.downloadMap(mapData);
+  }, [mapData]);
 
   return (
     <div className={styles.editor}>
