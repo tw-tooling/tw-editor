@@ -853,7 +853,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       />
       
       <div className={styles.workspace}>
-        <div className={`${styles.leftPanel} ${leftPanelVisible ? styles.visible : ''}`}>
+        <div className={`${styles.leftPanel} ${mobileView === 'layers' ? styles.visible : ''}`}>
           <LayerPanel />
           {toolState.tool === 'brush' && (
             <TileSelector
@@ -879,7 +879,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           />
         </div>
         
-        <div className={`${styles.rightPanel} ${rightPanelVisible ? styles.visible : ''}`}>
+        <div className={`${styles.rightPanel} ${mobileView === 'properties' ? styles.visible : ''}`}>
           <PropertiesPanel
             selectedLayer={selectedLayer}
             mapData={mapData}

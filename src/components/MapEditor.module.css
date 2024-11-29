@@ -89,11 +89,13 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
 
   .leftPanel.visible, .rightPanel.visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
 
   .canvasContainer {
@@ -123,6 +125,7 @@
     border: none;
     font-size: 1.2em;
     cursor: pointer;
+    transition: background-color 0.2s ease;
   }
 
   .bottomNavButton.active {
