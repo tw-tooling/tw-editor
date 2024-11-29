@@ -7,6 +7,7 @@ import styles from './PropertiesPanel.module.css';
 interface PropertiesProps {
   selectedLayer: number;
   mapData: MapData;
+  title?: string;
 }
 
 // Layer type options

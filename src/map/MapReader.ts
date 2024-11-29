@@ -90,7 +90,9 @@ export class MapReader {
     const data = this.buffer.slice(this.offset, this.offset + size);
     this.offset += size;
 
-    return { typeAndId, size, data };
+    const item = { size, data };
+    this.parseItem(item, typeAndId >> 16);
+    return item;
   }
 
   private readOffsets(count: number): number[] {
@@ -123,10 +125,8 @@ export class MapReader {
     );
   }
 
-  private parseItem(item: MapItem): void {
-    const type = item.typeAndId >> 16;
+  private parseItem(item: MapItem, type: ItemType): void {
     const view = new DataView(item.data);
-    let offset = 0;
 
     switch (type) {
       case ItemType.VERSION:
@@ -154,7 +154,8 @@ export class MapReader {
   }
 
   private parseInfoItem(view: DataView): InfoItem {
-    // Strings are stored as null-terminated UTF-16
+    // Strings are stored as null-terminated UTF-16LE (little-endian) encoded strings
+    // Each character takes 2 bytes, and strings end with a 0x0000 terminator
     const decoder = new TextDecoder('utf-16le');
     let offset = 0;
     
@@ -202,17 +203,32 @@ export class MapReader {
     };
   }
 
-  private parseLayerItem(view: DataView): LayerItem {
+  private parseLayerItem(view: DataView): TileLayerItem {
     const type = view.getInt32(0, true);
     const flags = view.getInt32(4, true);
 
     switch (type) {
       case LayerType.TILES:
-        return this.parseTileLayerItem(view);
-      case LayerType.QUADS:
-        return this.parseQuadLayerItem(view);
+        return {
+          type: LayerType.TILES,
+          flags,
+          version: view.getInt32(8, true),
+          width: view.getInt32(12, true),
+          height: view.getInt32(16, true),
+          color: {
+            r: view.getInt32(20, true),
+            g: view.getInt32(24, true),
+            b: view.getInt32(28, true),
+            a: view.getInt32(32, true)
+          },
+          colorEnv: view.getInt32(36, true),
+          colorEnvOffset: view.getInt32(40, true),
+          image: view.getInt32(44, true),
+          data: view.getInt32(48, true),
+          name: this.readString(view, 52)
+        };
       default:
-        return { type, flags };
+        throw new Error(`Unsupported layer type: ${type}`);
     }
   }
 

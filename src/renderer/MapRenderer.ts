@@ -164,7 +164,7 @@ export class MapRenderer {
     const tileX = Math.floor(worldX / this.tileManager.tileSize);
     const tileY = Math.floor(worldY / this.tileManager.tileSize);
 
-    const success = this.tileManager.setTileAtPosition(
+    const success = this.tileManager.setTile(
       tileX,
       tileY,
       selectedLayer,

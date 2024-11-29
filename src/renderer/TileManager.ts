@@ -275,10 +275,10 @@ export class TileManager {
     return layer.tileData?.[tileY * layer.width + tileX] || null;
   }
 
-  public setTileAtPosition(
-    tileX: number, 
-    tileY: number, 
-    layer: TileLayerItem, 
+  public setTile(
+    tileX: number,
+    tileY: number,
+    layer: TileLayerItem,
     tileId: number
   ): boolean {
     if (tileX < 0 || tileX >= layer.width || tileY < 0 || tileY >= layer.height) {

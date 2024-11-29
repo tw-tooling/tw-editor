@@ -134,7 +134,6 @@ export interface ItemTypeInfo {
 
 // Basic item structure
 export interface MapItem {
-  typeAndId: number;
   size: number;
   data: ArrayBuffer;
   parsed?: TileLayerItem | VersionItem | InfoItem | ImageItem | GroupItem;
