@@ -653,8 +653,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       
       if (distance !== null && center !== null && touchStartDistance && touchStartZoom && touchStartCenter) {
         const scale = distance / touchStartDistance;
-        const zoomFactor = Math.pow(scale, 0.5);
-        const newZoom = Math.min(Math.max(touchStartZoom * zoomFactor, 0.1), 10);
+        const newZoom = Math.min(Math.max(touchStartZoom * scale, 0.1), 10);
         
         const newOffset = {
           x: center.x - (touchStartCenter.x - offset.x) * (newZoom / touchStartZoom),
