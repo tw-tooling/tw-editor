@@ -75,6 +75,7 @@ export class TileManager {
   private tilesetImages: { [key: number]: HTMLImageElement } = {};
   private tilesPerRow: number = 16;
   private isLoading: { [key: number]: boolean } = {};
+  private loadPromises: { [key: number]: Promise<HTMLImageElement> } = {};
 
   constructor() {
     // Pre-load all tilesets
@@ -83,52 +84,92 @@ export class TileManager {
     });
   }
 
-  private loadTilemap(id: number, path: string) {
-    this.isLoading[id] = true;
-    const img = new Image();
-    img.onload = () => {
-      this.isLoading[id] = false;
-      this.tilesetImages[id] = img;
-    };
-    img.onerror = (e) => {
-      console.error(`Failed to load tilemap ${path}:`, e);
-      this.isLoading[id] = false;
-      this.loadDefaultTileset(id);
-    };
-    img.src = path;
-  }
-
-  private loadDefaultTileset(id: number) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    for (let y = 0; y < this.tilesPerRow; y++) {
-      for (let x = 0; x < this.tilesPerRow; x++) {
-        const tileX = x * this.tileSize;
-        const tileY = y * this.tileSize;
-        
-        const hue = ((x + y * this.tilesPerRow) * 20) % 360;
-        ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
-        ctx.fillRect(tileX, tileY, this.tileSize, this.tileSize);
-        
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.strokeRect(tileX, tileY, this.tileSize, this.tileSize);
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.font = '20px Arial';
-        ctx.fillText(`${x + y * this.tilesPerRow}`, tileX + 5, tileY + 25);
-      }
+  private loadTilemap(id: number, path: string): Promise<HTMLImageElement> {
+    // Return existing promise if already loading
+    if (this.loadPromises[id]) {
+      return this.loadPromises[id];
     }
 
-    const img = new Image();
-    img.src = canvas.toDataURL();
-    img.onload = () => {
-      this.tilesetImages[id] = img;
-      this.isLoading[id] = false;
-    };
+    // Return cached image if already loaded
+    if (this.tilesetImages[id] && !this.isLoading[id]) {
+      return Promise.resolve(this.tilesetImages[id]);
+    }
+
+    this.isLoading[id] = true;
+    
+    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        this.isLoading[id] = false;
+        this.tilesetImages[id] = img;
+        delete this.loadPromises[id];
+        resolve(img);
+      };
+      
+      img.onerror = (e) => {
+        console.error(`Failed to load tilemap ${path}:`, e);
+        this.isLoading[id] = false;
+        delete this.loadPromises[id];
+        this.loadDefaultTileset(id).then(resolve, reject);
+      };
+      
+      img.src = path;
+    });
+
+    this.loadPromises[id] = promise;
+    return promise;
+  }
+
+  private loadDefaultTileset(id: number): Promise<HTMLImageElement> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      for (let y = 0; y < this.tilesPerRow; y++) {
+        for (let x = 0; x < this.tilesPerRow; x++) {
+          const tileX = x * this.tileSize;
+          const tileY = y * this.tileSize;
+          
+          const hue = ((x + y * this.tilesPerRow) * 20) % 360;
+          ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+          ctx.fillRect(tileX, tileY, this.tileSize, this.tileSize);
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.strokeRect(tileX, tileY, this.tileSize, this.tileSize);
+          
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.font = '20px Arial';
+          ctx.fillText(`${x + y * this.tilesPerRow}`, tileX + 5, tileY + 25);
+        }
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        this.tilesetImages[id] = img;
+        this.isLoading[id] = false;
+        resolve(img);
+      };
+      img.src = canvas.toDataURL();
+    });
+  }
+
+  public async getTileset(id: number): Promise<HTMLImageElement | null> {
+    try {
+      if (!(id in IMAGE_PATHS)) {
+        console.warn(`Invalid image ID: ${id}`);
+        return null;
+      }
+      return await this.loadTilemap(id, IMAGE_PATHS[id]);
+    } catch (e) {
+      console.error('Error loading tileset:', e);
+      return null;
+    }
   }
 
   public createEmptyTileLayer(width: number, height: number): TileLayerItem {

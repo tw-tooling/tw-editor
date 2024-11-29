@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLayers } from '../contexts/LayerContext';
 import { LayerType } from '../types/map';
-import { GAME_LAYER_OPTIONS, MAP_LAYER_OPTIONS } from '../renderer/TileManager';
+import { TileManager } from '../renderer/TileManager';
 import styles from './TileSelector.module.css';
 
 interface TileSelectorProps {
@@ -11,6 +11,7 @@ interface TileSelectorProps {
 
 export const TileSelector: React.FC<TileSelectorProps> = ({ onTileSelect, selectedTileId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const tileManagerRef = useRef<TileManager>(new TileManager());
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const tileSize = 64;
@@ -25,23 +26,35 @@ export const TileSelector: React.FC<TileSelectorProps> = ({ onTileSelect, select
     // Reset offset when changing tileset
     setOffset({ x: 0, y: 0 });
 
-    // Load the appropriate tileset
-    const img = new Image();
-    img.onload = () => setTilesetImage(img);
-    img.onerror = () => {
-      console.error('Failed to load tileset');
-      setTilesetImage(null);
+    // Load tileset using TileManager
+    const loadTileset = async () => {
+      const image = await tileManagerRef.current.getTileset(activeLayer.image);
+      setTilesetImage(image);
     };
 
-    // Find the correct option based on layer type and image ID
-    const options = activeLayer.type === LayerType.GAME ? GAME_LAYER_OPTIONS : MAP_LAYER_OPTIONS;
-    const option = options.find(opt => opt.id === activeLayer.image);
-    
-    if (option) {
-      const basePath = activeLayer.type === LayerType.GAME ? '/entities' : '/mapres';
-      img.src = `${basePath}/${option.name}.png`;
-    }
+    loadTileset();
   }, [layers, selectedLayer]);
+
+  // Initialize canvas size on mount
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Set initial canvas size
+    canvas.width = 1024;
+    canvas.height = 1024;
+
+    // Draw loading state or placeholder
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#1e1e1e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = '16px Arial';
+      ctx.fillStyle = '#ccc';
+      ctx.textAlign = 'center';
+      ctx.fillText('Loading tileset...', canvas.width / 2, canvas.height / 2);
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
