@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLayers } from '../contexts/LayerContext';
-import { LayerType } from '../types/map';
 import { TileManager } from '../renderer/TileManager';
 import styles from './TileSelector.module.css';
 

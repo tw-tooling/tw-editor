@@ -145,8 +145,6 @@ const createDefaultMap = (): MapData => {
 
 type MobileView = 'draw' | 'layers' | 'properties';
 
-type ToolMode = 'primary' | 'secondary';
-
 const TILE_SIZE = 64; // Define tile size constant
 
 const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData }) => {
@@ -165,15 +163,10 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [selection, setSelection] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
   const [selectedTiles, setSelectedTiles] = useState<{id: number, flags: number}[]>([]);
   const [previewPosition, setPreviewPosition] = useState<{x: number, y: number} | null>(null);
-  const [leftPanelVisible, setLeftPanelVisible] = useState(true);
-  const [rightPanelVisible, setRightPanelVisible] = useState(true);
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartZoom, setTouchStartZoom] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('draw');
   const [touchStartCenter, setTouchStartCenter] = useState<{x: number, y: number} | null>(null);
-  const [tool, setTool] = useState<'select' | 'brush'>('brush');
-  const [selectMode, setSelectMode] = useState<ToolMode>('primary');
-  const [brushMode, setBrushMode] = useState<ToolMode>('primary');
   const [isTouchInput, setIsTouchInput] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(1);
 
@@ -297,12 +290,12 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
       // Draw preview tiles with semi-transparency
       selectedTiles.forEach((tile, i) => {
-        if (rendererRef.current?.tileManager && tile.id !== 0) {
+        if (rendererRef.current && tile.id !== 0) {
           const x = previewPosition.x + (i % selectionWidth);
           const y = previewPosition.y + Math.floor(i / selectionWidth);
           
           ctx.globalAlpha = 0.5;
-          rendererRef.current.tileManager.renderTile(
+          rendererRef.current.renderPreviewTile(
             ctx,
             {
               ...tile,

@@ -1,4 +1,4 @@
-import { MapData, LayerType, TileLayerItem } from '../types/map';
+import { MapData, TileLayerItem, Tile } from '../types/map';
 import { TileManager } from './TileManager';
 
 export class MapRenderer {
@@ -173,6 +173,19 @@ export class MapRenderer {
 
     if (success && onLayerUpdate) {
       onLayerUpdate({ ...selectedLayer });
+    }
+  }
+
+  public renderPreviewTile(
+    ctx: CanvasRenderingContext2D,
+    tile: Tile,
+    x: number,
+    y: number,
+    layer: TileLayerItem,
+    tileSize: number
+  ) {
+    if (tile.id !== 0) {
+      this.tileManager.renderTile(ctx, tile, x, y, layer, tileSize);
     }
   }
 } 
