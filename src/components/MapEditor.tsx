@@ -241,15 +241,23 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
     rendererRef.current.render(zoom, offset.x, offset.y);
 
+    // Apply transformations for preview rendering
+    ctx.setTransform(
+      zoom, 0,
+      0, zoom,
+      offset.x,
+      offset.y
+    );
+
     // Draw active selection if selecting
     if (selection && (isSelecting || selectedTiles.length === 0)) {
-      const startX = offset.x + selection.start.x * TILE_SIZE * zoom;
-      const startY = offset.y + selection.start.y * TILE_SIZE * zoom;
-      const width = (selection.end.x - selection.start.x + 1) * TILE_SIZE * zoom;
-      const height = (selection.end.y - selection.start.y + 1) * TILE_SIZE * zoom;
+      const startX = selection.start.x * TILE_SIZE;
+      const startY = selection.start.y * TILE_SIZE;
+      const width = (selection.end.x - selection.start.x + 1) * TILE_SIZE;
+      const height = (selection.end.y - selection.start.y + 1) * TILE_SIZE;
       
       ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / zoom;  // Scale line width with zoom
       ctx.strokeRect(startX, startY, width, height);
       ctx.fillStyle = 'rgba(0, 162, 255, 0.1)';
       ctx.fillRect(startX, startY, width, height);
@@ -264,18 +272,18 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       const activeLayer = layers[selectedLayer]?.parsed as TileLayerItem;
       if (!activeLayer) return;
 
-      // Calculate preview position in screen coordinates
-      const previewX = offset.x + previewPosition.x * TILE_SIZE * zoom;
-      const previewY = offset.y + previewPosition.y * TILE_SIZE * zoom;
+      // Calculate preview position in world coordinates
+      const previewX = previewPosition.x * TILE_SIZE;
+      const previewY = previewPosition.y * TILE_SIZE;
 
       // Draw preview outline
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / zoom;  // Scale line width with zoom
       ctx.strokeRect(
         previewX,
         previewY,
-        selectionWidth * TILE_SIZE * zoom,
-        selectionHeight * TILE_SIZE * zoom
+        selectionWidth * TILE_SIZE,
+        selectionHeight * TILE_SIZE
       );
 
       // Draw preview fill
@@ -283,8 +291,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       ctx.fillRect(
         previewX,
         previewY,
-        selectionWidth * TILE_SIZE * zoom,
-        selectionHeight * TILE_SIZE * zoom
+        selectionWidth * TILE_SIZE,
+        selectionHeight * TILE_SIZE
       );
 
       // Draw preview tiles with semi-transparency
@@ -301,15 +309,18 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
               skip: 0,
               reserved: 0
             },
-            offset.x + x * TILE_SIZE * zoom,
-            offset.y + y * TILE_SIZE * zoom,
+            x * TILE_SIZE,
+            y * TILE_SIZE,
             activeLayer,
-            TILE_SIZE * zoom
+            TILE_SIZE
           );
           ctx.globalAlpha = 1.0;
         }
       });
     }
+
+    // Reset transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition, isTouchInput, layers, selectedLayer]);
 
   useEffect(() => {
