@@ -147,6 +147,8 @@ type MobileView = 'draw' | 'layers' | 'properties';
 
 type ToolMode = 'primary' | 'secondary';
 
+const TILE_SIZE = 64; // Define tile size constant
+
 const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData }) => {
   const [mapData, setMapData] = useState(() => initialMapData || createDefaultMap());
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -186,8 +188,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     const worldX = (canvasX - offset.x) / zoom;
     const worldY = (canvasY - offset.y) / zoom;
     return {
-      x: Math.floor(worldX / 64), // Use 64px tile size
-      y: Math.floor(worldY / 64)
+      x: Math.floor(worldX / TILE_SIZE),
+      y: Math.floor(worldY / TILE_SIZE)
     };
   }, [offset, zoom]);
 
@@ -239,14 +241,12 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
     rendererRef.current.render(zoom, offset.x, offset.y);
 
-    const tileSize = 64 * zoom; // Use 64px tile size
-
     // Draw active selection if selecting
     if (selection && (isSelecting || selectedTiles.length === 0)) {
-      const startX = offset.x + selection.start.x * tileSize;
-      const startY = offset.y + selection.start.y * tileSize;
-      const width = (selection.end.x - selection.start.x + 1) * tileSize;
-      const height = (selection.end.y - selection.start.y + 1) * tileSize;
+      const startX = offset.x + selection.start.x * TILE_SIZE * zoom;
+      const startY = offset.y + selection.start.y * TILE_SIZE * zoom;
+      const width = (selection.end.x - selection.start.x + 1) * TILE_SIZE * zoom;
+      const height = (selection.end.y - selection.start.y + 1) * TILE_SIZE * zoom;
       
       ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
       ctx.lineWidth = 2;
@@ -259,44 +259,58 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     if (!isTouchInput && previewPosition && selectedTiles.length > 0 && selection && !isSelecting) {
       const selectionWidth = Math.abs(selection.end.x - selection.start.x) + 1;
       const selectionHeight = Math.abs(selection.end.y - selection.start.y) + 1;
-      const previewX = offset.x + previewPosition.x * tileSize;
-      const previewY = offset.y + previewPosition.y * tileSize;
       
+      // Get the current layer
+      const activeLayer = layers[selectedLayer]?.parsed as TileLayerItem;
+      if (!activeLayer) return;
+
+      // Calculate preview position in screen coordinates
+      const previewX = offset.x + previewPosition.x * TILE_SIZE * zoom;
+      const previewY = offset.y + previewPosition.y * TILE_SIZE * zoom;
+
+      // Draw preview outline
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.lineWidth = 2;
       ctx.strokeRect(
-        previewX, 
-        previewY, 
-        selectionWidth * tileSize, 
-        selectionHeight * tileSize
+        previewX,
+        previewY,
+        selectionWidth * TILE_SIZE * zoom,
+        selectionHeight * TILE_SIZE * zoom
       );
+
+      // Draw preview fill
       ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
       ctx.fillRect(
-        previewX, 
-        previewY, 
-        selectionWidth * tileSize, 
-        selectionHeight * tileSize
+        previewX,
+        previewY,
+        selectionWidth * TILE_SIZE * zoom,
+        selectionHeight * TILE_SIZE * zoom
       );
 
       // Draw preview tiles with semi-transparency
       selectedTiles.forEach((tile, i) => {
-        const x = previewPosition.x + (i % selectionWidth);
-        const y = previewPosition.y + Math.floor(i / selectionWidth);
-        
         if (rendererRef.current?.tileManager && tile.id !== 0) {
+          const x = previewPosition.x + (i % selectionWidth);
+          const y = previewPosition.y + Math.floor(i / selectionWidth);
+          
           ctx.globalAlpha = 0.5;
           rendererRef.current.tileManager.renderTile(
             ctx,
-            tile,
-            offset.x + x * tileSize,
-            offset.y + y * tileSize,
-            tileSize
+            {
+              ...tile,
+              skip: 0,
+              reserved: 0
+            },
+            offset.x + x * TILE_SIZE * zoom,
+            offset.y + y * TILE_SIZE * zoom,
+            activeLayer,
+            TILE_SIZE * zoom
           );
           ctx.globalAlpha = 1.0;
         }
       });
     }
-  }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition, isTouchInput]);
+  }, [zoom, offset, selection, isSelecting, selectedTiles, previewPosition, isTouchInput, layers, selectedLayer]);
 
   useEffect(() => {
     if (!canvasRef.current) return;

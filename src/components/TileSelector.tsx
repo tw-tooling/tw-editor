@@ -65,25 +65,31 @@ export const TileSelector: React.FC<TileSelectorProps> = ({ onTileSelect, select
     // Draw grid
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
-    for (let x = 0; x <= tilesetImage.width; x += tileSize) {
+
+    // Draw vertical lines
+    for (let x = 0; x <= canvas.width; x += tileSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, tilesetImage.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= tilesetImage.height; y += tileSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(tilesetImage.width, y);
+      ctx.lineTo(x, canvas.height);
       ctx.stroke();
     }
 
-    // Highlight selected tile
-    const selectedX = (selectedTileId % tilesPerRow) * tileSize;
-    const selectedY = Math.floor(selectedTileId / tilesPerRow) * tileSize;
-    ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(selectedX, selectedY, tileSize, tileSize);
+    // Draw horizontal lines
+    for (let y = 0; y <= canvas.height; y += tileSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+
+    // Highlight selected tile if valid
+    if (selectedTileId >= 0 && selectedTileId < tilesPerRow * tilesPerRow) {
+      const selectedX = (selectedTileId % tilesPerRow) * tileSize;
+      const selectedY = Math.floor(selectedTileId / tilesPerRow) * tileSize;
+      ctx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(selectedX, selectedY, tileSize, tileSize);
+    }
 
     ctx.restore();
   }, [tilesetImage, offset, selectedTileId]);
@@ -98,16 +104,19 @@ export const TileSelector: React.FC<TileSelectorProps> = ({ onTileSelect, select
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const scale = 1024 / rect.width; // Calculate scale based on actual canvas size
+    const scale = canvas.width / rect.width; // Calculate scale based on actual canvas size
     const x = (e.clientX - rect.left - offset.x) * scale;
     const y = (e.clientY - rect.top - offset.y) * scale;
 
-    const tileX = Math.floor(x / tileSize);
-    const tileY = Math.floor(y / tileSize);
-
-    if (tileX >= 0 && tileX < tilesPerRow && tileY >= 0 && tileY < tilesPerRow) {
-      const tileId = tileY * tilesPerRow + tileX;
-      onTileSelect(tileId);
+    // Make sure we're within the tileset bounds
+    if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+      const tileX = Math.floor(x / tileSize);
+      const tileY = Math.floor(y / tileSize);
+      
+      if (tileX >= 0 && tileX < tilesPerRow && tileY >= 0 && tileY < tilesPerRow) {
+        const tileId = tileY * tilesPerRow + tileX;
+        onTileSelect(tileId);
+      }
     }
   };
 

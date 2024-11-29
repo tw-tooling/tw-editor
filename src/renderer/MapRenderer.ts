@@ -24,6 +24,73 @@ export class MapRenderer {
     this.selectedTileId = id;
   }
 
+  private renderGrid() {
+    const ctx = this.ctx;
+    const tileSize = this.tileManager.tileSize;
+    
+    // Calculate visible area in world coordinates
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    
+    // Convert canvas bounds to world coordinates
+    const topLeft = this.screenToWorld(0, 0);
+    const bottomRight = this.screenToWorld(canvasWidth, canvasHeight);
+    
+    // Add padding to ensure grid covers edges when rotated
+    const padding = tileSize * 2;
+    const startX = Math.floor(topLeft.x / tileSize) * tileSize - padding;
+    const startY = Math.floor(topLeft.y / tileSize) * tileSize - padding;
+    const endX = Math.ceil(bottomRight.x / tileSize) * tileSize + padding;
+    const endY = Math.ceil(bottomRight.y / tileSize) * tileSize + padding;
+    
+    // Draw grid
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1 / this.currentZoom; // Scale line width with zoom
+    
+    // Vertical lines
+    for (let x = startX; x <= endX; x += tileSize) {
+      ctx.moveTo(x, startY);
+      ctx.lineTo(x, endY);
+    }
+    
+    // Horizontal lines
+    for (let y = startY; y <= endY; y += tileSize) {
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+    }
+    
+    ctx.stroke();
+  }
+
+  private screenToWorld(screenX: number, screenY: number) {
+    return {
+      x: (screenX - this.currentOffsetX) / this.currentZoom,
+      y: (screenY - this.currentOffsetY) / this.currentZoom
+    };
+  }
+
+  private renderMapOutline() {
+    // Find the first tile layer to get map dimensions
+    const tileLayer = this.mapData.items.find(item => 
+      item.parsed && 'type' in item.parsed && item.parsed.type === 2
+    )?.parsed;
+
+    if (!tileLayer || !('width' in tileLayer)) return;
+
+    const width = tileLayer.width * this.tileManager.tileSize;
+    const height = tileLayer.height * this.tileManager.tileSize;
+
+    // Draw outline
+    this.ctx.strokeStyle = 'rgba(0, 162, 255, 0.5)';
+    this.ctx.lineWidth = 2 / this.currentZoom;
+    this.ctx.strokeRect(0, 0, width, height);
+
+    // Draw a subtle fill to make the map area visible
+    this.ctx.fillStyle = 'rgba(0, 162, 255, 0.03)';
+    this.ctx.fillRect(0, 0, width, height);
+  }
+
   public render(zoom: number, offsetX: number, offsetY: number) {
     this.currentZoom = zoom;
     this.currentOffsetX = offsetX;
@@ -40,6 +107,12 @@ export class MapRenderer {
       offsetX,
       offsetY
     );
+
+    // Draw grid first
+    this.renderGrid();
+
+    // Draw map outline
+    this.renderMapOutline();
 
     // Render each layer
     this.mapData.items.forEach(item => {
