@@ -34,7 +34,7 @@ export const LayerProvider: React.FC<{
           color: { r: 255, g: 255, b: 255, a: 255 },
           colorEnv: -1,
           colorEnvOffset: 0,
-          image: -1,  // game layer
+          image: -1,  // vanilla game layer
           data: 0,
           tileData: new Array(100 * 50).fill(null).map(() => ({
             id: 0,

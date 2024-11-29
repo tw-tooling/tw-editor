@@ -166,17 +166,30 @@ export class TileManager {
     if (tile.id === 0) return;
 
     const imageId = layer.image;
+    // For game layer (image: -1), use vanilla tileset
+    const effectiveImageId = imageId === -1 ? -1 : imageId;
+    
     // Check if the image ID exists in our paths
-    if (!(imageId in IMAGE_PATHS)) {
-      console.warn(`Invalid image ID: ${imageId}`);
+    if (!(effectiveImageId in IMAGE_PATHS)) {
+      console.warn(`Invalid image ID: ${effectiveImageId}`);
       return;
     }
 
-    const tilesetImage = this.tilesetImages[imageId];
-    if (!tilesetImage || this.isLoading[imageId]) return;
+    const tilesetImage = this.tilesetImages[effectiveImageId];
+    if (!tilesetImage || this.isLoading[effectiveImageId]) return;
 
-    const tileX = (tile.id % this.tilesPerRow) * this.tileSize;
-    const tileY = Math.floor(tile.id / this.tilesPerRow) * this.tileSize;
+    // For game layer, adjust tile coordinates based on game tile layout
+    let tileX, tileY;
+    if (layer.image === -1) {
+      // Game layer tile layout
+      const gameLayerTilesPerRow = 16;
+      tileX = (tile.id % gameLayerTilesPerRow) * this.tileSize;
+      tileY = Math.floor(tile.id / gameLayerTilesPerRow) * this.tileSize;
+    } else {
+      // Regular layer tile layout
+      tileX = (tile.id % this.tilesPerRow) * this.tileSize;
+      tileY = Math.floor(tile.id / this.tilesPerRow) * this.tileSize;
+    }
 
     try {
       ctx.save();
