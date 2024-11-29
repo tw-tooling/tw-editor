@@ -1,0 +1,53 @@
+.tileSelector {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: #252525;
+  border-radius: 4px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  background: #1e1e1e;
+  border-radius: 4px;
+}
+
+.toolbar button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #333;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar button:hover {
+  background: #444;
+}
+
+.toolbar span {
+  min-width: 48px;
+  text-align: center;
+  color: #ccc;
+}
+
+.canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #1e1e1e;
+  image-rendering: pixelated;
+}
+
+.canvas:active {
+  cursor: grabbing;
+} 

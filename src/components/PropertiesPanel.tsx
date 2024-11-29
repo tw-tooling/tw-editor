@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { MapData, TileLayerItem, LayerType } from '../types/map';
 import { useLayers } from '../contexts/LayerContext';
+import { getImageOptions } from '../renderer/TileManager';
 import styles from './PropertiesPanel.module.css';
 
 interface PropertiesProps {
   selectedLayer: number;
   mapData: MapData;
 }
-
-// Fixed image options matching the example
-const IMAGE_OPTIONS = [
-  { id: -1, name: "game" },
-  { id: 0, name: "grass_main" },
-  { id: 1, name: "generic_unhookable" },
-  { id: 2, name: "desert_main" }
-];
 
 // Layer type options
 const LAYER_TYPE_OPTIONS = [
@@ -72,7 +65,9 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
       const updatedLayer = { ...activeLayer };
       updatedLayer.parsed = {
         ...layerData,
-        type: newType
+        type: newType,
+        // Reset image when changing layer type
+        image: newType === LayerType.GAME ? -1 : 0
       };
       updateLayer(selectedLayer, updatedLayer);
     }
@@ -86,6 +81,9 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
       </div>
     );
   }
+
+  // Get the appropriate image options based on layer type
+  const imageOptions = getImageOptions(layerData.type);
 
   return (
     <div className={styles.panel}>
@@ -123,7 +121,7 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
           onChange={handleImageChange}
           className={styles.input}
         >
-          {IMAGE_OPTIONS.map(option => (
+          {imageOptions.map(option => (
             <option key={option.id} value={option.id}>
               {option.name}
             </option>

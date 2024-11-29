@@ -3,6 +3,7 @@ import { MapData, TileLayerItem, LayerType } from '../types/map';
 import { EditorToolbar } from './EditorToolbar';
 import { LayerPanel } from './LayerPanel';
 import { PropertiesPanel } from './PropertiesPanel';
+import { TileSelector } from './TileSelector';
 import { MapRenderer } from '../renderer/MapRenderer';
 import { MapExporter } from '../map/MapExporter';
 import styles from './MapEditor.module.css';
@@ -172,6 +173,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
   const [selectMode, setSelectMode] = useState<ToolMode>('primary');
   const [brushMode, setBrushMode] = useState<ToolMode>('primary');
   const [isTouchInput, setIsTouchInput] = useState(false);
+  const [selectedTileId, setSelectedTileId] = useState(1);
 
   const { selectedLayer, setLayers, layers, updateLayer } = useLayers();
 
@@ -184,8 +186,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     const worldX = (canvasX - offset.x) / zoom;
     const worldY = (canvasY - offset.y) / zoom;
     return {
-      x: Math.floor(worldX / 32), // Assuming 32px tile size
-      y: Math.floor(worldY / 32)
+      x: Math.floor(worldX / 64), // Use 64px tile size
+      y: Math.floor(worldY / 64)
     };
   }, [offset, zoom]);
 
@@ -237,7 +239,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
 
     rendererRef.current.render(zoom, offset.x, offset.y);
 
-    const tileSize = 32 * zoom;
+    const tileSize = 64 * zoom; // Use 64px tile size
 
     // Draw active selection if selecting
     if (selection && (isSelecting || selectedTiles.length === 0)) {
@@ -727,6 +729,13 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
     // Don't reset isTouchInput here to prevent preview flicker
   };
 
+  const handleTileSelect = useCallback((tileId: number) => {
+    setSelectedTileId(tileId);
+    if (rendererRef.current) {
+      rendererRef.current.setSelectedTileId(tileId);
+    }
+  }, []);
+
   const renderMobileNavigation = () => {
     return (
       <div className={styles.bottomNav}>
@@ -819,8 +828,14 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       />
       
       <div className={styles.workspace}>
-        <div className={`${styles.leftPanel} ${mobileView === 'layers' ? styles.visible : ''}`}>
+        <div className={`${styles.leftPanel} ${leftPanelVisible ? styles.visible : ''}`}>
           <LayerPanel />
+          {toolState.tool === 'brush' && (
+            <TileSelector
+              selectedTileId={selectedTileId}
+              onTileSelect={handleTileSelect}
+            />
+          )}
         </div>
         
         <div className={styles.canvasContainer}>
@@ -839,7 +854,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
           />
         </div>
         
-        <div className={`${styles.rightPanel} ${mobileView === 'properties' ? styles.visible : ''}`}>
+        <div className={`${styles.rightPanel} ${rightPanelVisible ? styles.visible : ''}`}>
           <PropertiesPanel
             selectedLayer={selectedLayer}
             mapData={mapData}
