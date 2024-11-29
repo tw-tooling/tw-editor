@@ -465,6 +465,7 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
             updatedLayer.parsed = updatedTileLayer;
             updateLayer(selectedLayer, updatedLayer);
           },
+          e.button === 2 ? 0 : undefined // Use tile ID 0 for erasing on right click
         );
         render();
       }
