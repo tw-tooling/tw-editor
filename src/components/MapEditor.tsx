@@ -34,7 +34,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: -1,  // game layer
+        image: -2,  // DDNet (-2 is the ID for DDNet, -1 is Vanilla)
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
@@ -82,7 +82,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 1,  // generic_unhookable
+        image: 25,  // unhookable
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
@@ -93,7 +93,7 @@ const createDefaultMap = (): MapData => {
         name: 'Unhookable Layer'
       } as TileLayerItem
     },
-    // Background layer (desert)
+    // Background layer
     {
       size: 0,
       data: new ArrayBuffer(0),
@@ -106,7 +106,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 2,  // desert_main
+        image: 1,
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
