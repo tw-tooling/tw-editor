@@ -58,7 +58,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 0,  // grass_main
+        image: 29,  // grass_main
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,

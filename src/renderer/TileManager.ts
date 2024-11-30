@@ -36,7 +36,7 @@ Object.keys(mapTilesets).forEach(path => {
   const name = getNameFromPath(path);
   if (!MAP_NAME_TO_ID.has(name)) {
     // grass_main gets ID 0, others get sequential IDs
-    const id = name === 'grass_main' ? 0 : MAP_NAME_TO_ID.size + (MAP_NAME_TO_ID.has('grass_main') ? 0 : 1);
+    const id = MAP_NAME_TO_ID.size;
     MAP_NAME_TO_ID.set(name, id);
   }
 });
