@@ -19,14 +19,14 @@ export const MAP_LAYER_OPTIONS: { id: string, name: string }[] = [];
 // Process entity tilesets (game layers)
 Object.entries(entityTilesets).forEach(([path, url]) => {
   const name = getNameFromPath(path);
-  IMAGE_PATHS[name] = url;
+  IMAGE_PATHS[name] = url.replace('/public/', '');
   GAME_LAYER_OPTIONS.push({ id: name, name });
 });
 
 // Process map tilesets
 Object.entries(mapTilesets).forEach(([path, url]) => {
   const name = getNameFromPath(path);
-  IMAGE_PATHS[name] = url;
+  IMAGE_PATHS[name] = url.replace('/public/', '');
   MAP_LAYER_OPTIONS.push({ id: name, name });
 });
 
