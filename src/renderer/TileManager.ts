@@ -207,8 +207,8 @@ export class TileManager {
     if (tile.id === 0) return;
 
     const imageId = layer.image;
-    // For game layer (image: -1), use vanilla tileset
-    const effectiveImageId = imageId === -1 ? -1 : imageId;
+    // For game layer, use vanilla tileset
+    const effectiveImageId = layer.type === LayerType.GAME ? -1 : imageId;
     
     // Check if the image ID exists in our paths
     if (!(effectiveImageId in IMAGE_PATHS)) {
@@ -221,7 +221,7 @@ export class TileManager {
 
     // For game layer, adjust tile coordinates based on game tile layout
     let tileX, tileY;
-    if (layer.image === -1) {
+    if (layer.type === LayerType.GAME) {
       // Game layer tile layout
       const gameLayerTilesPerRow = 16;
       tileX = (tile.id % gameLayerTilesPerRow) * this.tileSize;

@@ -26,7 +26,7 @@ const createDefaultMap = (): MapData => {
       size: 0,
       data: new ArrayBuffer(0),
       parsed: {
-        type: LayerType.TILES,
+        type: LayerType.GAME,
         flags: 1,
         version: 1,
         width: 100,
@@ -474,7 +474,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         return;
       }
 
-      if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+      if (activeLayer?.parsed && 'type' in activeLayer.parsed && 
+          (activeLayer.parsed.type === LayerType.TILES || activeLayer.parsed.type === LayerType.GAME)) {
         const updatedLayer = { ...activeLayer };
         rendererRef.current?.render(zoom, offset.x, offset.y);
         rendererRef.current?.handleMouseDown(
@@ -517,7 +518,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       }
     } else if (isDrawing && toolState.tool === 'brush') {
       const activeLayer = layers[selectedLayer];
-      if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+      if (activeLayer?.parsed && 'type' in activeLayer.parsed && 
+          (activeLayer.parsed.type === LayerType.TILES || activeLayer.parsed.type === LayerType.GAME)) {
         const updatedLayer = { ...activeLayer };
         rendererRef.current?.render(zoom, offset.x, offset.y);
         rendererRef.current?.handleMouseDown(
@@ -627,7 +629,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
         setIsErasing(toolState.mode === 'secondary');
         const activeLayer = layers[selectedLayer];
         
-        if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+        if (activeLayer?.parsed && 'type' in activeLayer.parsed && 
+            (activeLayer.parsed.type === LayerType.TILES || activeLayer.parsed.type === LayerType.GAME)) {
           const updatedLayer = { ...activeLayer };
           rendererRef.current?.render(zoom, offset.x, offset.y);
           rendererRef.current?.handleMouseDown(
@@ -696,7 +699,8 @@ const MapEditorContent: React.FC<MapEditorProps> = ({ mapData: initialMapData })
       // Handle single finger based on tool and mode
       if (toolState.tool === 'brush' && isDrawing) {
         const activeLayer = layers[selectedLayer];
-        if (activeLayer?.parsed && 'type' in activeLayer.parsed && activeLayer.parsed.type === LayerType.TILES) {
+        if (activeLayer?.parsed && 'type' in activeLayer.parsed && 
+            (activeLayer.parsed.type === LayerType.TILES || activeLayer.parsed.type === LayerType.GAME)) {
           const updatedLayer = { ...activeLayer };
           rendererRef.current?.render(zoom, offset.x, offset.y);
           rendererRef.current?.handleMouseDown(

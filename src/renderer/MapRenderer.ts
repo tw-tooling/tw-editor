@@ -1,4 +1,4 @@
-import { MapData, TileLayerItem, Tile } from '../types/map';
+import { MapData, TileLayerItem, Tile, LayerType } from '../types/map';
 import { TileManager } from './TileManager';
 
 export class MapRenderer {
@@ -73,7 +73,8 @@ export class MapRenderer {
   private renderMapOutline() {
     // Find the first tile layer to get map dimensions
     const tileLayer = this.mapData.items.find(item => 
-      item.parsed && 'type' in item.parsed && item.parsed.type === 2
+      item.parsed && 'type' in item.parsed && 
+      (item.parsed.type === LayerType.TILES || item.parsed.type === LayerType.GAME)
     )?.parsed;
 
     if (!tileLayer || !('width' in tileLayer)) return;
@@ -116,7 +117,8 @@ export class MapRenderer {
 
     // Render each layer
     this.mapData.items.forEach(item => {
-      if (item.parsed && 'type' in item.parsed && item.parsed.type === 2) { // TileLayer
+      if (item.parsed && 'type' in item.parsed && 
+          (item.parsed.type === LayerType.TILES || item.parsed.type === LayerType.GAME)) {
         const layer = item.parsed;
         if (!layer.tileData) return;
 
