@@ -87,7 +87,7 @@ export interface TileLayerItem extends LayerItem {
   color: { r: number; g: number; b: number; a: number };
   colorEnv: number;
   colorEnvOffset: number;
-  image: number;
+  image: string;
   data: number;  // Index to tile data
   tileData?: Tile[];  // Parsed tile data
   name: string;
@@ -109,7 +109,7 @@ export interface QuadLayerItem extends LayerItem {
   version: number;
   numQuads: number;
   data: number;  // Index to quad data
-  image: number;
+  name: number;
 }
 
 // Map file header structure

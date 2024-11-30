@@ -47,10 +47,10 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newImage = parseInt(e.target.value);
-    
-    if (activeLayer && layerData) {
-      const updatedLayer = { ...activeLayer };
+    const newImage = e.target.value;
+    if (selectedLayer !== null && layers[selectedLayer]?.parsed) {
+      const layerData = layers[selectedLayer].parsed as TileLayerItem;
+      const updatedLayer = { ...layers[selectedLayer] };
       updatedLayer.parsed = {
         ...layerData,
         image: newImage
@@ -60,15 +60,15 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newType = parseInt(e.target.value);
-    
-    if (activeLayer && layerData) {
-      const updatedLayer = { ...activeLayer };
+    const newType = parseInt(e.target.value) as LayerType;
+    if (selectedLayer !== null && layers[selectedLayer]?.parsed) {
+      const layerData = layers[selectedLayer].parsed as TileLayerItem;
+      const updatedLayer = { ...layers[selectedLayer] };
       updatedLayer.parsed = {
         ...layerData,
         type: newType,
         // Reset image when changing layer type
-        image: newType === LayerType.GAME ? -1 : 0
+        image: newType === LayerType.GAME ? 'vanilla' : 'grass_main'
       };
       updateLayer(selectedLayer, updatedLayer);
     }
@@ -123,7 +123,7 @@ export const PropertiesPanel: React.FC<PropertiesProps> = ({
           className={styles.input}
         >
           {imageOptions.map(option => (
-            <option key={option.id} value={option.id}>
+            <option key={option.id} value={option.name}>
               {option.name}
             </option>
           ))}

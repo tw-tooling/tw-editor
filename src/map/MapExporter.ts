@@ -42,7 +42,12 @@ export class MapExporter {
     return offset + 4;
   }
 
+  private static imageNameToId = new Map<string, number>();
+
   public static exportMap(mapData: MapData): ArrayBuffer {
+    // Reset image name to ID map
+    this.imageNameToId.clear();
+
     // Prepare items array similar to Python version
     const items: Item[] = [
       // Version item
@@ -77,11 +82,19 @@ export class MapExporter {
     layerItems.forEach((item, i) => {
       if (!item.parsed || !('tileData' in item.parsed)) return;
       const layer = item.parsed as TileLayerItem;
+
+      // Get or assign an ID for this image name
+      let imageId = this.imageNameToId.get(layer.image);
+      if (imageId === undefined) {
+        imageId = this.imageNameToId.size;
+        this.imageNameToId.set(layer.image, imageId);
+      }
+
       items.push(new Item(i, ITEM_TYPES.LAYER, [
         0, 2, 0,  // header
         3, layer.width, layer.height, i === 0 ? 1 : 0,  // version, width, height, flags
         255, 255, 255, 255,  // color
-        0xffffffff, 0, i === 0 ? imageItems.length : i - 1, imageItems.length + i,  // colorenv, image, data
+        0xffffffff, 0, imageId, imageItems.length + i,  // colorenv, image, data
         ...(i === 0 ? nameGame : nameEmpty),  // name
         0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff  // reserved
       ]));
@@ -94,11 +107,12 @@ export class MapExporter {
     const data: Uint8Array[] = [];
     
     // Add image names
-    imageItems.forEach(item => {
-      if (!item.parsed || !('name' in item.parsed)) return;
-      const encoder = new TextEncoder();
-      data.push(encoder.encode(item.parsed.name + '\0'));
-    });
+    Array.from(this.imageNameToId.entries())
+      .sort((a, b) => a[1] - b[1])
+      .forEach(([name]) => {
+        const encoder = new TextEncoder();
+        data.push(encoder.encode(name + '\0'));
+      });
 
     // Add layer data
     layerItems.forEach(item => {

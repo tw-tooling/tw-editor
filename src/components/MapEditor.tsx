@@ -34,7 +34,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: -2,  // DDNet (-2 is the ID for DDNet, -1 is Vanilla)
+        image: 'DDNet',  // DDNet game layer
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
@@ -58,7 +58,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 29,  // grass_main
+        image: 'grass_main',
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
@@ -82,7 +82,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 25,  // unhookable
+        image: 'generic_unhookable',
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,
@@ -106,7 +106,7 @@ const createDefaultMap = (): MapData => {
         color: { r: 255, g: 255, b: 255, a: 255 },
         colorEnv: -1,
         colorEnvOffset: 0,
-        image: 1,
+        image: 'desert_main',
         data: 0,
         tileData: new Array(100 * 50).fill(null).map(() => ({
           id: 0,

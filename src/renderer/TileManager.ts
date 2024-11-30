@@ -12,56 +12,26 @@ function getNameFromPath(path: string): string {
 }
 
 // Process all tilesets and create the image paths and options
-const IMAGE_PATHS: { [key: number]: string } = {};
-export const GAME_LAYER_OPTIONS: { id: number, name: string }[] = [];
-export const MAP_LAYER_OPTIONS: { id: number, name: string }[] = [];
+const IMAGE_PATHS: { [key: string]: string } = {};
+export const GAME_LAYER_OPTIONS: { id: string, name: string }[] = [];
+export const MAP_LAYER_OPTIONS: { id: string, name: string }[] = [];
 
-// Create maps of names to IDs for consistent ID assignment
-const GAME_NAME_TO_ID = new Map<string, number>();
-const MAP_NAME_TO_ID = new Map<string, number>();
-
-// First, collect all unique names and assign IDs
 // Process entity tilesets (game layers)
-Object.keys(entityTilesets).forEach(path => {
-  const name = getNameFromPath(path);
-  if (!GAME_NAME_TO_ID.has(name)) {
-    // Vanilla gets -1, others get sequential negative IDs
-    const id = name.toLowerCase() === 'vanilla' ? -1 : -(GAME_NAME_TO_ID.size + 2);
-    GAME_NAME_TO_ID.set(name, id);
-  }
-});
-
-// Process map tilesets (regular layers)
-Object.keys(mapTilesets).forEach(path => {
-  const name = getNameFromPath(path);
-  if (!MAP_NAME_TO_ID.has(name)) {
-    // grass_main gets ID 0, others get sequential IDs
-    const id = MAP_NAME_TO_ID.size;
-    MAP_NAME_TO_ID.set(name, id);
-  }
-});
-
-// Then process entities
 Object.entries(entityTilesets).forEach(([path, url]) => {
   const name = getNameFromPath(path);
-  const id = GAME_NAME_TO_ID.get(name)!;
-  IMAGE_PATHS[id] = url;
-  GAME_LAYER_OPTIONS.push({ id, name });
+  IMAGE_PATHS[name] = url;
+  GAME_LAYER_OPTIONS.push({ id: name, name });
 });
 
-// Then process map tilesets
+// Process map tilesets
 Object.entries(mapTilesets).forEach(([path, url]) => {
   const name = getNameFromPath(path);
-  const id = MAP_NAME_TO_ID.get(name)!;
-  IMAGE_PATHS[id] = url;
-  MAP_LAYER_OPTIONS.push({ id, name });
+  IMAGE_PATHS[name] = url;
+  MAP_LAYER_OPTIONS.push({ id: name, name });
 });
 
 // Sort options by name
 GAME_LAYER_OPTIONS.sort((a, b) => {
-  // Keep vanilla (id: -1) at the top
-  if (a.id === -1) return -1;
-  if (b.id === -1) return 1;
   return a.name.localeCompare(b.name);
 });
 
@@ -74,56 +44,56 @@ export function getImageOptions(layerType: LayerType) {
 
 export class TileManager {
   public readonly tileSize: number = 64;
-  private tilesetImages: { [key: number]: HTMLImageElement } = {};
+  private tilesetImages: { [key: string]: HTMLImageElement } = {};
   private tilesPerRow: number = 16;
-  private isLoading: { [key: number]: boolean } = {};
-  private loadPromises: { [key: number]: Promise<HTMLImageElement> } = {};
+  private isLoading: { [key: string]: boolean } = {};
+  private loadPromises: { [key: string]: Promise<HTMLImageElement> } = {};
 
   constructor() {
     // Pre-load all tilesets
-    Object.entries(IMAGE_PATHS).forEach(([id, path]) => {
-      this.loadTilemap(parseInt(id), path);
+    Object.keys(IMAGE_PATHS).forEach(name => {
+      this.loadTilemap(name, IMAGE_PATHS[name]);
     });
   }
 
-  private loadTilemap(id: number, path: string): Promise<HTMLImageElement> {
+  private loadTilemap(imageName: string, path: string): Promise<HTMLImageElement> {
     // Return existing promise if already loading
-    if (this.loadPromises[id]) {
-      return this.loadPromises[id];
+    if (this.loadPromises[imageName]) {
+      return this.loadPromises[imageName];
     }
 
     // Return cached image if already loaded
-    if (this.tilesetImages[id] && !this.isLoading[id]) {
-      return Promise.resolve(this.tilesetImages[id]);
+    if (this.tilesetImages[imageName] && !this.isLoading[imageName]) {
+      return Promise.resolve(this.tilesetImages[imageName]);
     }
 
-    this.isLoading[id] = true;
+    this.isLoading[imageName] = true;
     
     const promise = new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       
       img.onload = () => {
-        this.isLoading[id] = false;
-        this.tilesetImages[id] = img;
-        delete this.loadPromises[id];
+        this.isLoading[imageName] = false;
+        this.tilesetImages[imageName] = img;
+        delete this.loadPromises[imageName];
         resolve(img);
       };
       
       img.onerror = (e) => {
         console.error(`Failed to load tilemap ${path}:`, e);
-        this.isLoading[id] = false;
-        delete this.loadPromises[id];
-        this.loadDefaultTileset(id).then(resolve, reject);
+        this.isLoading[imageName] = false;
+        delete this.loadPromises[imageName];
+        this.loadDefaultTileset(imageName).then(resolve, reject);
       };
       
       img.src = path;
     });
 
-    this.loadPromises[id] = promise;
+    this.loadPromises[imageName] = promise;
     return promise;
   }
 
-  private loadDefaultTileset(id: number): Promise<HTMLImageElement> {
+  private loadDefaultTileset(imageName: string): Promise<HTMLImageElement> {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       canvas.width = 1024;
@@ -153,21 +123,21 @@ export class TileManager {
 
       const img = new Image();
       img.onload = () => {
-        this.tilesetImages[id] = img;
-        this.isLoading[id] = false;
+        this.tilesetImages[imageName] = img;
+        this.isLoading[imageName] = false;
         resolve(img);
       };
       img.src = canvas.toDataURL();
     });
   }
 
-  public async getTileset(id: number): Promise<HTMLImageElement | null> {
+  public async getTileset(imageName: string): Promise<HTMLImageElement | null> {
     try {
-      if (!(id in IMAGE_PATHS)) {
-        console.warn(`Invalid image ID: ${id}`);
+      if (!(imageName in IMAGE_PATHS)) {
+        console.warn(`Invalid image name: ${imageName}`);
         return null;
       }
-      return await this.loadTilemap(id, IMAGE_PATHS[id]);
+      return await this.loadTilemap(imageName, IMAGE_PATHS[imageName]);
     } catch (e) {
       console.error('Error loading tileset:', e);
       return null;
@@ -183,7 +153,7 @@ export class TileManager {
     }));
 
     return {
-      type: 2,
+      type: LayerType.TILES,
       name: '',
       flags: 0,
       version: 1,
@@ -192,7 +162,7 @@ export class TileManager {
       color: { r: 255, g: 255, b: 255, a: 255 },
       colorEnv: -1,
       colorEnvOffset: 0,
-      image: -1,
+      image: 'grass_main',
       data: 0,
       tileData
     };
@@ -208,18 +178,8 @@ export class TileManager {
   ) {
     if (tile.id === 0) return;
 
-    const imageId = layer.image;
-    // For game layer, use vanilla tileset
-    const effectiveImageId = layer.type === LayerType.GAME ? -1 : imageId;
-    
-    // Check if the image ID exists in our paths
-    if (!(effectiveImageId in IMAGE_PATHS)) {
-      console.warn(`Invalid image ID: ${effectiveImageId}`);
-      return;
-    }
-
-    const tilesetImage = this.tilesetImages[effectiveImageId];
-    if (!tilesetImage || this.isLoading[effectiveImageId]) return;
+    const tilesetImage = this.tilesetImages[layer.image];
+    if (!tilesetImage || this.isLoading[layer.image]) return;
 
     // For game layer, adjust tile coordinates based on game tile layout
     let tileX, tileY;
